@@ -5,3 +5,6 @@ dist/
 .DS_Store
 Thumbs.db
 *.tar.gz
+venv/
+%USERPROFILE%/
+docs/superpowers/

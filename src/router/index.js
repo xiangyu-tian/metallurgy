@@ -96,8 +96,103 @@ const router = createRouter({
       meta: {
         title: "智能对话 - 冶金平台"
       }
+    },
+    {
+      path: '/basic-principles',
+      name: 'BasicPrinciples',
+      component: () => import('../views/BasicPrinciples.vue'),
+      meta: { title: "冶金基础原理 - 冶金平台" }
+    },
+    {
+      path: '/steel-metallurgy',
+      name: 'SteelMetallurgy',
+      component: () => import('../views/SteelMetallurgy.vue'),
+      meta: { title: "钢铁冶金 - 冶金平台" }
+    },
+    {
+      path: '/non-ferrous',
+      name: 'NonFerrous',
+      component: () => import('../views/NonFerrous.vue'),
+      meta: { title: "有色冶金 - 冶金平台" }
+    },
+    {
+      path: '/energy-restructuring',
+      name: 'EnergyRestructuring',
+      component: () => import('../views/EnergyRestructuring.vue'),
+      meta: { title: "冶金能源重构 - 冶金平台" }
+    },
+    {
+      path: '/resource-utilization',
+      name: 'ResourceUtilization',
+      component: () => import('../views/ResourceUtilization.vue'),
+      meta: { title: "冶金资源利用 - 冶金平台" }
+    },
+    {
+      path: '/scene/thermodynamics',
+      name: 'SceneThermodynamics',
+      component: () => import('../views/SceneThermodynamics.vue'),
+      meta: { title: "热力学推理 - 冶金平台" }
+    },
+    {
+      path: '/scene/converter',
+      name: 'SceneConverter',
+      component: () => import('../views/SceneConverter.vue'),
+      meta: { title: "转炉炼钢工艺优化 - 冶金平台" }
+    },
+    {
+      path: '/scene/blastfurnace',
+      name: 'SceneBlastfurnace',
+      component: () => import('../views/SceneBlastfurnace.vue'),
+      meta: { title: "高炉低碳运行分析 - 冶金平台" }
+    },
+    {
+      path: '/scene/casting',
+      name: 'SceneCasting',
+      component: () => import('../views/SceneCasting.vue'),
+      meta: { title: "连铸质量辅助决策 - 冶金平台" }
+    },
+    {
+      path: '/scene',
+      name: 'Scene',
+      component: () => import('../views/SceneLayout.vue'),
+      meta: { title: "智能场景 - 冶金平台" }
+    },
+    {
+      path: '/scene/simulation',
+      name: 'SceneSimulation',
+      component: () => import('../views/SceneSimulation.vue'),
+      meta: { title: "仿真与工单协同 - 冶金平台" }
+    },
+    {
+      path: '/scene/thermodynamics/tool/:toolId',
+      name: 'SceneThermoTool',
+      component: () => import('../views/SceneThermoTool.vue'),
+      meta: { title: "热力学推理 - 冶金平台" }
+    },
+    {
+      path: '/scene/converter/tool/:toolId',
+      name: 'SceneConverterTool',
+      component: () => import('../views/SceneConverterTool.vue'),
+      meta: { title: "转炉炼钢工艺优化 - 冶金平台" }
+    },
+    {
+      path: '/scene/blastfurnace/tool/:toolId',
+      name: 'SceneBlastTool',
+      component: () => import('../views/SceneBlastTool.vue'),
+      meta: { title: "高炉低碳运行分析 - 冶金平台" }
+    },
+    {
+      path: '/scene/casting/tool/:toolId',
+      name: 'SceneCastingTool',
+      component: () => import('../views/SceneCastingTool.vue'),
+      meta: { title: "连铸质量辅助决策 - 冶金平台" }
+    },
+    {
+      path: '/scene/simulation/tool/:toolId',
+      name: 'SceneSimTool',
+      component: () => import('../views/SceneSimTool.vue'),
+      meta: { title: "仿真与工单协同 - 冶金平台" }
     }
-    // =================================
   ]
 });
 

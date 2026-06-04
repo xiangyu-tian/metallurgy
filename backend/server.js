@@ -15,6 +15,37 @@ const smallModelRegistry = [
     name: '热力学推理',
     icon: '🔬',
     handler: async (params) => {
+      const { tool, ...rest } = params;
+      // 子工具分发
+      if (tool === 'enthalpy') {
+        const { reaction } = rest;
+        const db = [['C + O\u2082 \u2192 CO\u2082', -393.5, '碳完全燃烧'],['2C + O\u2082 \u2192 2CO', -221.0, '碳不完全燃烧'],['FeO + C \u2192 Fe + CO', 158.0, '氧化亚铁碳还原'],['Fe\u2082O\u2083 + 3CO \u2192 2Fe + 3CO\u2082', -24.7, '赤铁矿间接还原']];
+        const m = db.find(r => r[0] === reaction);
+        if (!m) return { summary: '不支持该反应', data: {}, unit: 'kJ/mol' };
+        return { summary: `${m[0]} 标准焓变 ΔH° = ${m[1]} kJ/mol（${m[2]}）`, data: {'反应': m[0], '名称': m[2], 'ΔH°': `${m[1]} kJ/mol`, '反应类型': m[1] < 0 ? '放热反应' : '吸热反应', '热效应': `${Math.abs(m[1])} kJ/mol`}, unit: 'kJ/mol' };
+      }
+      if (tool === 'direction') {
+        const { reaction, temperature } = rest;
+        const T = parseFloat(temperature) || 1600, TK = T + 273.15;
+        const db = [['C + O\u2082 \u2192 CO\u2082', -393.5, 2.9],['2C + O\u2082 \u2192 2CO', -221.0, 179.2],['FeO + C \u2192 Fe + CO', 158.0, 150.0],['Fe\u2082O\u2083 + 3CO \u2192 2Fe + 3CO\u2082', -24.7, 15.6],['CaCO\u2083 \u2192 CaO + CO\u2082', 178.3, 160.6]];
+        const m = db.find(r => r[0] === reaction);
+        if (!m) return { summary: '不支持该反应', data: {}, unit: '' };
+        const deltaG = m[1] - TK * m[2] / 1000;
+        const dir = deltaG < -10 ? '正向强烈自发' : deltaG < 0 ? '正向自发' : deltaG < 10 ? '逆向自发（需能量输入）' : '逆向强烈自发';
+        let note = '';
+        if (reaction.includes('CaCO\u2083')) { const decK = m[1] / (m[2] / 1000); note = `。分解温度约 ${(decK - 273.15).toFixed(0)}°C`; }
+        return { summary: `${m[0]} 在 ${T}°C，ΔG = ${deltaG.toFixed(2)} kJ/mol，${dir}${note}`, data: {'反应': m[0], '温度': `${T}°C`, 'ΔG': `${deltaG.toFixed(2)} kJ/mol`, '方向': dir}, unit: 'kJ/mol' };
+      }
+      if (tool === 'equilibrium') {
+        const { reaction, temperature } = rest;
+        const T = parseFloat(temperature) || 1600, TK = T + 273.15;
+        const db = [['C + O\u2082 \u2192 CO\u2082', -393.5, 2.9],['2C + O\u2082 \u2192 2CO', -221.0, 179.2],['FeO + C \u2192 Fe + CO', 158.0, 150.0],['Fe\u2082O\u2083 + 3CO \u2192 2Fe + 3CO\u2082', -24.7, 15.6]];
+        const m = db.find(r => r[0] === reaction);
+        if (!m) return { summary: '不支持该反应', data: {}, unit: '' };
+        const deltaG = m[1] - TK * m[2] / 1000, K = Math.exp(-deltaG * 1000 / (8.314 * TK));
+        return { summary: `${m[0]} 在 ${T}°C，K = ${K.toExponential(4)}`, data: {'反应': m[0], '温度': `${T}°C`, 'ΔG': `${deltaG.toFixed(2)} kJ/mol`, 'K': K.toExponential(4)}, unit: '' };
+      }
+      // ========== 默认：完整热力学计算（含全部10种反应）==========
       // ========== 真实热化学数据库（10种常见冶金反应） ==========
       const reactionDB = [
         {
@@ -152,11 +183,22 @@ const smallModelRegistry = [
     name: '转炉炼钢工艺优化',
     icon: '🔥',
     handler: async (params) => {
-      // 模拟转炉终点预测
-      const { siContent, targetCarbon, steelTemp, oxygenFlow } = params;
-      const si = parseFloat(siContent) || 0.5;
-      const tC = parseFloat(targetCarbon) || 0.05;
-      const temp = parseFloat(steelTemp) || 1600;
+      const { tool, siContent, targetCarbon, steelTemp, oxygenFlow } = params;
+      const si = parseFloat(siContent) || 0.5, tC = parseFloat(targetCarbon) || 0.05, temp = parseFloat(steelTemp) || 1600, oxy = parseFloat(oxygenFlow) || 25000;
+      // 子工具分发
+      if (tool === 'oxygen') {
+        const oxyConsumption = (si * 8 + tC * 15 + Math.random() * 5).toFixed(1);
+        return { summary: `氧耗计算：Si ${si}% + 目标C ${tC}%，预计氧耗 ${oxyConsumption} Nm³/t`, data: {'铁水Si': `${si}%`, '目标碳': `${tC}%`, '预计氧耗': `${oxyConsumption} Nm³/t`, '氧枪流量': `${oxy} Nm³/h`}, unit: 'Nm³' };
+      }
+      if (tool === 'slag') {
+        const basicity = (3.2 + (Math.random() - 0.5) * 0.8).toFixed(2), lime = (si * 2.5 + Math.random()).toFixed(1);
+        return { summary: `渣碱度计算：R = ${basicity}，建议石灰用量 ${lime} kg/t`, data: {'铁水Si': `${si}%`, '渣碱度R': basicity, '石灰用量': `${lime} kg/t`}, unit: '' };
+      }
+      if (tool === 'temperature') {
+        const predTemp = temp + (Math.random() - 0.5) * 20;
+        return { summary: `温度预测：入炉 ${temp}°C → 终点 ${predTemp.toFixed(0)}°C，温降 ${(temp - predTemp).toFixed(0)}°C`, data: {'入炉温度': `${temp}°C`, '预测终点温度': `${predTemp.toFixed(0)}°C`, '温降': `${(temp - predTemp).toFixed(0)}°C`}, unit: '°C' };
+      }
+      // 默认：终点预测
       // 模拟预测
       const predictedCarbon = tC + (Math.random() - 0.5) * 0.02;
       const predictedTemp = temp + (Math.random() - 0.5) * 20;
@@ -182,12 +224,22 @@ const smallModelRegistry = [
     name: '高炉低碳运行分析',
     icon: '🏭',
     handler: async (params) => {
-      // 模拟高炉碳排放评估
-      const { cokeRate, coalRate, production, oreGrade } = params;
-      const cr = parseFloat(cokeRate) || 360;
-      const coi = parseFloat(coalRate) || 160;
-      const prod = parseFloat(production) || 5000;
-      const grade = parseFloat(oreGrade) || 62;
+      const { tool, cokeRate, coalRate, production, oreGrade } = params;
+      const cr = parseFloat(cokeRate) || 360, coi = parseFloat(coalRate) || 160, prod = parseFloat(production) || 5000, grade = parseFloat(oreGrade) || 62;
+      // 子工具分发
+      if (tool === 'efficiency') {
+        const eff = Math.min(95, ((300 / cr) + (130 / coi)) / 2 * 100).toFixed(1);
+        return { summary: `能效评估：焦比 ${cr} kg/t、煤比 ${coi} kg/t，综合能效 ${eff}%`, data: {'焦比': `${cr} kg/t`, '煤比': `${coi} kg/t`, '综合能效': `${eff}%`, '能效等级': eff > 85 ? '优秀' : eff > 75 ? '良好' : '待优化'}, unit: '%' };
+      }
+      if (tool === 'reduction') {
+        const emission = (cr * 2.86 + coi * 2.45) * prod / 1000, bench = (380 * 2.86 + 170 * 2.45) * prod / 1000;
+        return { summary: `降碳潜力：当前 ${emission.toFixed(0)} tCO₂/d，较基准 ${bench.toFixed(0)} 降低 ${((1 - emission/bench) * 100).toFixed(1)}%`, data: {'当前日排放': `${emission.toFixed(0)} tCO₂`, '基准日排放': `${bench.toFixed(0)} tCO₂`, '降碳比例': `${((1 - emission/bench) * 100).toFixed(1)}%`}, unit: 'tCO₂' };
+      }
+      if (tool === 'utilization') {
+        const util = Math.min(98, (300 / cr) * 100).toFixed(1);
+        return { summary: `碳利用效率：焦比 ${cr} kg/t，碳利用效率 ${util}%`, data: {'焦比': `${cr} kg/t`, '碳利用效率': `${util}%`, '行业标杆': '92%'}, unit: '%' };
+      }
+      // 默认：碳排放综合评估
       // 计算碳排放
       const carbonEmission = (cr * 2.86 + coi * 2.45) * prod / 1000;
       const benchmarkEmission = (380 * 2.86 + 170 * 2.45) * prod / 1000;
@@ -214,10 +266,32 @@ const smallModelRegistry = [
     name: '连铸质量辅助决策',
     icon: '📊',
     handler: async (params) => {
-      // 模拟铸坯质量预测
-      const { steelGrade, sectionSize, castingSpeed, superheat } = params;
-      const speed = parseFloat(castingSpeed) || 1.2;
-      const sh = parseFloat(superheat) || 30;
+      const { tool, steelGrade, sectionSize, castingSpeed, superheat } = params;
+      const speed = parseFloat(castingSpeed) || 1.2, sh = parseFloat(superheat) || 30;
+      // 子工具分发
+      if (tool === 'segregation') {
+        try {
+          const segRes = await axios.post('http://localhost:8001/api/predict/single', params, { timeout: 15000 });
+          if (segRes.data && segRes.data.data) {
+            const d = segRes.data.data;
+            return { summary: `偏析预测完成：碳极差1=${d['碳极差1']}、碳极差2=${d['碳极差2']}、碳偏析指数=${d['碳偏析指数']}`, data: {'碳极差1': d['碳极差1'], '碳极差2': d['碳极差2'], '碳偏析指数': d['碳偏析指数'], '评估': parseFloat(d['碳偏析指数']) < 1.2 ? '优' : parseFloat(d['碳偏析指数']) < 1.5 ? '良' : '需优化'}, unit: '' };
+          }
+        } catch (e) {
+          console.warn('⚠️ 偏析预测服务调用失败，降级为模拟数据', e.message);
+        }
+        // 降级：服务不可用时使用模拟数据
+        const c1 = (0.8 + Math.random() * 0.4).toFixed(3), c2 = (0.6 + Math.random() * 0.3).toFixed(3), idx = (1.0 + Math.random() * 0.5).toFixed(3);
+        return { summary: `偏析预测（模拟）：碳极差1=${c1}、碳极差2=${c2}、碳偏析指数=${idx}`, data: {'碳极差1': c1, '碳极差2': c2, '碳偏析指数': idx, '评估': parseFloat(idx) < 1.2 ? '优' : parseFloat(idx) < 1.5 ? '良' : '需优化'}, unit: '' };
+      }
+      if (tool === 'crack') {
+        const crackIdx = (Math.random() * 0.5).toFixed(3);
+        return { summary: `表面裂纹预测：指数 ${crackIdx}（${parseFloat(crackIdx) < 0.2 ? '低风险' : parseFloat(crackIdx) < 0.35 ? '中风险' : '高风险'}）`, data: {'裂纹指数': crackIdx, '风险等级': parseFloat(crackIdx) < 0.2 ? '低' : parseFloat(crackIdx) < 0.35 ? '中' : '高'}, unit: '' };
+      }
+      if (tool === 'porosity') {
+        const porIdx = (0.5 + Math.random() * 1.0).toFixed(2);
+        return { summary: `中心疏松预测：指数 ${porIdx}（${parseFloat(porIdx) < 1.0 ? '轻微' : parseFloat(porIdx) < 1.5 ? '中等' : '严重'}）`, data: {'疏松指数': porIdx, '严重程度': parseFloat(porIdx) < 1.0 ? '轻微' : parseFloat(porIdx) < 1.5 ? '中等' : '严重'}, unit: '' };
+      }
+      // 默认：综合质量评分
       // 质量指标模拟
       const centerSegregation = (0.8 + (Math.random() - 0.5) * 0.6).toFixed(2);
       const porosity = (1.2 + (Math.random() - 0.5) * 1.0).toFixed(2);
@@ -247,8 +321,17 @@ const smallModelRegistry = [
     name: '对话式仿真与工单协同',
     icon: '💻',
     handler: async (params) => {
-      // 模拟操作工单生成
-      const { scenario, equipment, duration } = params;
+      const { tool, scenario, equipment, duration } = params;
+      // 子工具分发
+      if (tool === 'risk') {
+        const level = ['低', '中', '高'][Math.floor(Math.random() * 3)], prob = (Math.random() * 100).toFixed(1);
+        return { summary: `风险评估：${scenario || '标准冶炼'} 场景风险等级 ${level}（概率 ${prob}%）`, data: {'场景': scenario || '标准冶炼', '设备': equipment || '转炉', '风险等级': level, '风险概率': `${prob}%`}, unit: '' };
+      }
+      if (tool === 'params') {
+        const recTemp = (1550 + Math.random() * 50).toFixed(0), recPress = (2 + Math.random()).toFixed(1), recTime = (30 + Math.random() * 30).toFixed(0);
+        return { summary: `参数推荐：温度 ${recTemp}°C、压力 ${recPress} atm、时长 ${recTime} min`, data: {'推荐温度': `${recTemp}°C`, '推荐压力': `${recPress} atm`, '推荐时长': `${recTime} min`}, unit: '' };
+      }
+      // 默认：操作工单生成
       const steps = [
         `1. 检查 ${equipment || '转炉'} 设备状态，确认各传感器读数正常`,
         `2. 设定工艺参数：温度 ${(1550 + Math.random() * 50).toFixed(0)}°C，压力 ${(2 + Math.random()).toFixed(1)} atm`,

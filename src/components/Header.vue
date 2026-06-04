@@ -87,6 +87,29 @@
               </div>
             </li>
             <li>
+              <router-link to="/scene">智能场景</router-link>
+            </li>
+            <li>
+              <router-link to="/basic-principles">研究领域</router-link>
+              <div class="bx-nav-fd">
+                <p>
+                  <router-link to="/basic-principles">冶金基础原理</router-link>
+                </p>
+                <p>
+                  <router-link to="/steel-metallurgy">钢铁冶金</router-link>
+                </p>
+                <p>
+                  <router-link to="/non-ferrous">有色冶金</router-link>
+                </p>
+                <p>
+                  <router-link to="/energy-restructuring">冶金能源重构</router-link>
+                </p>
+                <p>
+                  <router-link to="/resource-utilization">冶金资源利用</router-link>
+                </p>
+              </div>
+            </li>
+            <li>
               <router-link to="/List">科普</router-link>
               <div class="bx-nav-fd">
                 <p>
