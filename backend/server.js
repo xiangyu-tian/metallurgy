@@ -271,7 +271,9 @@ const smallModelRegistry = [
       // 子工具分发
       if (tool === 'segregation') {
         try {
-          const segRes = await axios.post('http://localhost:8001/api/predict/single', params, { timeout: 15000 });
+          const featureKeys = ['C','Si','Mn','P','S','Cr','Ni','Mo','V','Ti','Cu','Al','Nb','B','N','Ca','Mg','As','Sn','Zn','Pb'];
+          const mlParams = Object.fromEntries(Object.entries(params).filter(([k]) => featureKeys.includes(k)));
+          const segRes = await axios.post('http://localhost:8001/api/predict/single', mlParams, { timeout: 15000 });
           if (segRes.data && segRes.data.data) {
             const d = segRes.data.data;
             return { summary: `偏析预测完成：碳极差1=${d['碳极差1']}、碳极差2=${d['碳极差2']}、碳偏析指数=${d['碳偏析指数']}`, data: {'碳极差1': d['碳极差1'], '碳极差2': d['碳极差2'], '碳偏析指数': d['碳偏析指数'], '评估': parseFloat(d['碳偏析指数']) < 1.2 ? '优' : parseFloat(d['碳偏析指数']) < 1.5 ? '良' : '需优化'}, unit: '' };
