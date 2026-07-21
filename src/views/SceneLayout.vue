@@ -28,6 +28,101 @@
 
       <!-- Right Content -->
       <main class="content">
+        <!-- 模型调用面板 -->
+        <div v-if="showInvokePanel" class="invoke-panel">
+          <div class="invoke-header">
+            <div>
+              <h2><i class="fas fa-cogs"></i> {{ invokeModelName }}</h2>
+              <p class="module-desc">模型ID: {{ invokeModelId }} · 通过统一模型微服务调用</p>
+            </div>
+            <button class="btn-close" @click="closeInvoke"><i class="fas fa-times"></i> 关闭</button>
+          </div>
+
+          <!-- 参数输入 -->
+          <div class="invoke-section">
+            <h3><i class="fas fa-keyboard"></i> 参数输入</h3>
+            <div v-if="schemaLoading" class="loading-hint"><i class="fas fa-spinner fa-spin"></i> 加载参数定义...</div>
+            <div v-else class="invoke-form">
+              <div class="form-row" v-for="field in invokeFields" :key="field.name">
+                <label :for="'f-' + field.name">
+                  {{ field.label }}
+                  <span v-if="field.required" class="required-star">*</span>
+                </label>
+                <div class="field-control">
+                  <!-- 枚举类型 → 下拉菜单 -->
+                  <select v-if="field.enum" :id="'f-' + field.name"
+                    v-model="invokeParams[field.name]">
+                    <option value="">请选择 {{ field.label }}</option>
+                    <option v-for="opt in field.enum" :key="opt" :value="opt">{{ opt }}</option>
+                  </select>
+                  <!-- 数值类型 -->
+                  <input v-else-if="field.type === 'number'" :id="'f-' + field.name"
+                    type="number" v-model.number="invokeParams[field.name]"
+                    :placeholder="field.placeholder || '输入数值'"
+                    :min="field.min" :max="field.max" step="any">
+                  <!-- 文本类型 -->
+                  <input v-else :id="'f-' + field.name"
+                    type="text" v-model="invokeParams[field.name]"
+                    :placeholder="field.placeholder || '输入' + field.label">
+                  <!-- 单位后缀 -->
+                  <span v-if="field.unit" class="field-unit">{{ field.unit }}</span>
+                </div>
+                <!-- 字段说明 -->
+                <div v-if="field.description" class="field-desc">{{ field.description }}</div>
+              </div>
+
+              <!-- 单位换算辅助（A001 专用） -->
+              <div v-if="invokeModelId === 'A001'" class="unit-help-section">
+                <button class="btn-link" @click="toggleUnitHelp">
+                  <i class="fas" :class="showUnitHelp ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                  查看可用单位
+                </button>
+                <div v-if="showUnitHelp" class="unit-help-grid">
+                  <div v-for="(units, category) in commonUnits" :key="category" class="unit-group">
+                    <h5>{{ category }}</h5>
+                    <div class="unit-chips">
+                      <span v-for="u in units" :key="u" class="unit-chip"
+                        :class="{ active: invokeParams.source_unit === u || invokeParams.target_unit === u }"
+                        @click="setUnitParam($event.target.closest('.unit-chip').dataset.field || 'source_unit', u)"
+                        @click.shift="setUnitParam('target_unit', u)"
+                      >{{ u }}</span>
+                    </div>
+                  </div>
+                  <p class="unit-help-tip"><i class="fas fa-info-circle"></i> 点击选择源单位，Shift+点击选择目标单位</p>
+                </div>
+              </div>
+            </div>
+            <button class="btn-search" @click="doInvoke" :disabled="invokeLoading || schemaLoading">
+              <i class="fas fa-play"></i> {{ invokeLoading ? '计算中...' : '执行计算' }}
+            </button>
+          </div>
+
+          <!-- 计算结果 -->
+          <div v-if="invokeResult" class="invoke-section invoke-result">
+            <h3><i class="fas fa-chart-bar"></i> 计算结果</h3>
+            <div class="result-status" :class="invokeResult.status">
+              <i class="fas" :class="invokeResult.status === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'"></i>
+              {{ invokeResult.status === 'success' ? '计算成功' : '计算失败' }}
+            </div>
+            <pre v-if="invokeResult.result" class="result-json">{{ JSON.stringify(invokeResult.result, null, 2) }}</pre>
+            <div v-if="invokeResult.error" class="result-error">
+              <i class="fas fa-times-circle"></i> {{ invokeResult.error }}
+              <span v-if="invokeResult.error_code" class="error-code">({{ invokeResult.error_code }})</span>
+            </div>
+            <div v-if="invokeResult.provenance && invokeResult.provenance.length" class="result-provenance">
+              <h4><i class="fas fa-database"></i> 数据来源</h4>
+              <div v-for="p in invokeResult.provenance" :key="p.dataset_id" class="provenance-item">
+                <code>{{ p.dataset_id }}</code> {{ p.name }} <span v-if="p.version">v{{ p.version }}</span>
+              </div>
+            </div>
+            <div v-if="invokeResult.runtime_ms" class="result-meta">
+              耗时: {{ invokeResult.runtime_ms }}ms
+            </div>
+          </div>
+        </div>
+
+        <!-- 常规场景内容（模型调用面板未激活时显示） -->
+        <template v-if="!showInvokePanel">
         <!-- Scene header -->
         <div class="scene-header">
           <div class="scene-info">
@@ -63,6 +158,7 @@
             </div>
           </div>
         </div>
+        </template>
       </main>
     </div>
   </div>
@@ -135,7 +231,7 @@ const sceneData = {
       { id: 'quality', name: '质量综合评分', icon: 'fa-star', route: '/scene/casting/tool/quality',
         desc: '基于工艺参数综合评估连铸坯质量等级',
         features: ['综合质量评分', '优化建议'], usage: '输入钢种/断面/拉速/过热度 → 评分' },
-      { id: 'segregation', name: '偏析预测', icon: 'fa-chart-line', route: 'http://localhost:8001', badge: '推荐',
+      { id: 'segregation', name: '偏析预测', icon: 'fa-chart-line', route: '/segregation/', badge: '推荐',
         desc: '基于机器学习模型的连铸圆坯偏析预测系统',
         features: ['真实 ML 模型预测', '碳极差 + 偏析指数', '可视化图表展示'], usage: '打开独立预测系统进行操作', external: true },
       { id: 'crack', name: '表面裂纹预测', icon: 'fa-exclamation-triangle', route: '/scene/casting/tool/crack',
@@ -166,10 +262,155 @@ const sceneData = {
 export default {
   name: 'SceneLayout',
   components: { Header, Footer },
-  data() { return { activeScene: 'thermodynamics', scenes: Object.values(sceneData) } },
+  data() {
+    return {
+      activeScene: 'thermodynamics',
+      scenes: Object.values(sceneData),
+      // 模型调用模式
+      invokeModelId: '',
+      invokeModelName: '',
+      invokeFields: [],          // 从后端 API 获取的字段定义
+      invokeParams: {},
+      showInvokePanel: false,
+      invokeResult: null,
+      invokeLoading: false,
+      schemaLoading: false,
+      availableUnits: [],
+      showUnitHelp: false,
+    };
+  },
   computed: {
-    currentScene() { return sceneData[this.activeScene] || sceneData.thermodynamics; }
-  }
+    currentScene() { return sceneData[this.activeScene] || sceneData.thermodynamics; },
+    // 常用单位列表（供 A001 等模型展示）
+    commonUnits() {
+      return {
+        temperature: ['K', '°C', '°F'],
+        mass: ['kg', 'g', 't', 'lb'],
+        pressure: ['Pa', 'kPa', 'MPa', 'atm', 'bar', 'psi'],
+        energy: ['J', 'kJ', 'cal'],
+        length: ['m', 'cm', 'mm', 'km'],
+        time: ['s', 'min', 'h'],
+      };
+    },
+  },
+  methods: {
+    doInvoke() {
+      this.invokeLoading = true;
+      this.invokeResult = null;
+      const modelId = this.invokeModelId;
+
+      // 收集参数
+      const params = {};
+      for (const field of this.invokeFields) {
+        const val = this.invokeParams[field.name];
+        if (val !== '' && val !== undefined && val !== null) {
+          params[field.name] = field.type === 'number' ? parseFloat(val) : val;
+        }
+      }
+
+      fetch(`/api/v1/models/${modelId}/invoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: params, options: { validate_boundary: true, return_provenance: true } })
+      })
+      .then(r => r.json())
+      .then(data => {
+        this.invokeResult = data;
+        this.invokeLoading = false;
+      })
+      .catch(err => {
+        this.invokeResult = { status: 'error', error: '网络错误或微服务不可用', error_code: 'NETWORK_ERROR' };
+        this.invokeLoading = false;
+      });
+    },
+    closeInvoke() {
+      this.showInvokePanel = false;
+      this.invokeModelId = '';
+      this.invokeFields = [];
+      this.invokeParams = {};
+      this.invokeResult = null;
+      this.$router.push('/scene');
+    },
+    // 从后端获取模型 Schema
+    loadModelSchema(modelId) {
+      this.schemaLoading = true;
+      fetch(`/api/v1/models/${modelId}`)
+        .then(r => r.json())
+        .then(data => {
+          const schema = data.input_schema_json || {};
+          const props = schema.properties || {};
+          const required = schema.required || [];
+          this.invokeFields = Object.entries(props).map(([name, def]) => ({
+            name,
+            label: def.label || name,
+            type: def.type || 'string',
+            required: required.includes(name),
+            unit: def.unit || '',
+            min: def.min_value,
+            max: def.max_value,
+            enum: def.enum || null,
+            default: def.default,
+            placeholder: def.placeholder || '',
+            description: def.description || '',
+          }));
+          // 设置默认值
+          for (const f of this.invokeFields) {
+            if (f.default !== undefined && f.default !== null) {
+              this.invokeParams[f.name] = f.default;
+            }
+          }
+          this.schemaLoading = false;
+        })
+        .catch(err => {
+          console.warn('获取 Schema 失败，使用基础表单', err);
+          // 降级：使用基础文本表单
+          this.invokeFields = [
+            { name: 'input', label: '输入参数', type: 'text', required: true, unit: '', enum: null }
+          ];
+          this.schemaLoading = false;
+        });
+    },
+    // 获取可用单位（A001 专用）
+    loadAvailableUnits() {
+      fetch('/api/v1/models/A001/invoke', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ input: { value: 1, source_unit: 'kg', target_unit: 'g' } })
+      })
+      .then(r => r.json())
+      .catch(() => {});
+    },
+    fieldInputType(field) {
+      if (field.type === 'number') return 'number';
+      if (field.enum) return 'select';
+      return 'text';
+    },
+    toggleUnitHelp() {
+      this.showUnitHelp = !this.showUnitHelp;
+    },
+    setUnitParam(fieldName, unit) {
+      this.invokeParams[fieldName] = unit;
+    },
+  },
+  mounted() {
+    // 处理 ?model=B008 查询参数
+    const modelId = this.$route.query.model;
+    if (modelId) {
+      const modelNames = {
+        'A001': '单位换算', 'A002': '化学式解析', 'A003': '摩尔质量计算',
+        'A004': '成分归一化', 'A005': '质量守恒校验', 'B003': '显热与焓积分',
+        'B006': '反应焓计算', 'B007': '反应熵计算', 'B008': 'Gibbs自由能计算',
+        'B009': '平衡常数计算', 'B019': '杠杆规则计算', 'C001': 'Arrhenius速率常数',
+      };
+      this.invokeModelId = modelId;
+      this.invokeModelName = modelNames[modelId] || modelId;
+      this.showInvokePanel = true;
+      this.loadModelSchema(modelId);
+      if (modelId === 'A001') {
+        this.loadAvailableUnits();
+      }
+    }
+  },
 };
 </script>
 
@@ -232,4 +473,50 @@ export default {
 /* Responsive */
 @media (max-width: 992px) { .main-section { flex-direction: column; } .sidebar { width: 100%; position: static; } .sidebar-nav { display: flex; flex-wrap: wrap; gap: 4px; } .nav-item { flex: 1; min-width: 120px; justify-content: center; } }
 @media (max-width: 768px) { .tools-grid { grid-template-columns: 1fr; } }
+
+/* ── 模型调用面板 ── */
+.invoke-panel { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.05); }
+.invoke-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; padding-bottom: 20px; border-bottom: 2px solid #eef0f4; }
+.invoke-header h2 { margin: 0; font-size: 20px; color: #333; }
+.invoke-header .module-desc { margin: 4px 0 0; font-size: 13px; color: #999; }
+.btn-close { background: none; border: 1px solid #ddd; padding: 8px 16px; border-radius: 6px; cursor: pointer; color: #666; font-size: 13px; }
+.btn-close:hover { background: #f5f5f5; color: #333; }
+.invoke-section { margin-bottom: 24px; padding: 20px; background: #fafbfc; border-radius: 8px; border: 1px solid #eef0f4; }
+.invoke-section h3 { margin: 0 0 16px; font-size: 15px; color: #333; display: flex; align-items: center; gap: 6px; }
+.invoke-section .btn-search { margin-top: 12px; }
+.invoke-form .form-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.invoke-form .form-row label { width: 120px; font-size: 13px; color: #333; flex-shrink: 0; text-align: right; font-weight: 500; }
+.required-star { color: #e53935; margin-left: 2px; }
+.field-control { flex: 1; display: flex; align-items: center; gap: 6px; min-width: 200px; }
+.field-control input,
+.field-control select { flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; background: #fff; }
+.field-control input:focus,
+.field-control select:focus { border-color: #0046DB; outline: none; box-shadow: 0 0 0 2px rgba(0,70,219,0.1); }
+.field-unit { font-size: 12px; color: #999; white-space: nowrap; }
+.field-desc { width: 100%; margin-left: 128px; font-size: 12px; color: #999; margin-top: -4px; margin-bottom: 4px; }
+.loading-hint { padding: 20px; text-align: center; color: #999; font-size: 14px; }
+
+/* ── 单位换算辅助 ── */
+.unit-help-section { margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd; }
+.btn-link { background: none; border: none; color: #0046DB; cursor: pointer; font-size: 13px; padding: 4px 0; display: flex; align-items: center; gap: 4px; }
+.btn-link:hover { text-decoration: underline; }
+.unit-help-grid { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+.unit-group h5 { margin: 0 0 4px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
+.unit-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.unit-chip { display: inline-block; padding: 4px 10px; border: 1px solid #ddd; border-radius: 14px; font-size: 12px; cursor: pointer; transition: all 0.2s; font-family: monospace; }
+.unit-chip:hover { border-color: #0046DB; color: #0046DB; background: #f0f4ff; }
+.unit-chip.active { background: #0046DB; color: #fff; border-color: #0046DB; }
+.unit-help-tip { font-size: 11px; color: #999; margin: 8px 0 0; display: flex; align-items: center; gap: 4px; }
+.result-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+.result-status.success { background: #e8f5e9; color: #2e7d32; }
+.result-status.rejected { background: #fff8e1; color: #f57f17; }
+.result-status.error { background: #ffebee; color: #c62828; }
+.result-json { background: #1a2744; color: #e0e0e0; padding: 16px; border-radius: 8px; font-size: 13px; line-height: 1.6; overflow-x: auto; max-height: 400px; }
+.result-error { color: #c62828; font-size: 13px; padding: 8px 12px; background: #ffebee; border-radius: 6px; }
+.error-code { color: #999; font-size: 12px; margin-left: 4px; }
+.result-provenance { margin-top: 12px; padding-top: 12px; border-top: 1px solid #eef0f4; }
+.result-provenance h4 { font-size: 13px; color: #666; margin: 0 0 8px; }
+.provenance-item { font-size: 13px; color: #333; padding: 4px 0; }
+.provenance-item code { background: #f5f5f5; padding: 2px 6px; border-radius: 3px; font-size: 12px; color: #0046DB; }
+.result-meta { font-size: 12px; color: #999; margin-top: 8px; }
 </style>

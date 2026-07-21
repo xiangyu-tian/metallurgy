@@ -568,8 +568,50 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ========== API v1 代理 → 模型微服务 (Python FastAPI) ==========
+const MODELS_SERVER_URL = 'http://127.0.0.1:8002';
+
+// 使用自定义代理中间件，兼容 POST body 转发
+app.use('/api/v1', async (req, res) => {
+    const targetUrl = `${MODELS_SERVER_URL}${req.originalUrl}`;
+    try {
+        const method = req.method.toLowerCase();
+        const reqConfig = {
+            method: method,
+            url: targetUrl,
+            headers: {
+                'Content-Type': req.headers['content-type'] || 'application/json',
+                'Accept': req.headers['accept'] || 'application/json',
+            },
+            timeout: 30000,
+            responseType: 'json',
+        };
+        // 只在有 body 的方法中传递 body
+        if (['post', 'put', 'patch'].includes(method)) {
+            reqConfig.data = req.body;
+        }
+        const response = await axios(reqConfig);
+        res.status(response.status).json(response.data);
+    } catch (error) {
+        if (error.response) {
+            // 目标服务器返回了错误
+            return res.status(error.response.status).json(error.response.data);
+        }
+        console.error('❌ 模型微服务代理错误:', error.message);
+        res.status(503).json({
+            code: 503,
+            message: '模型微服务暂时不可用',
+            detail: error.message,
+            hint: '请确认 Tools/models_server.py 已在端口 8002 运行',
+        });
+    }
+});
+
+console.log('🔌 API v1 已代理到模型微服务:', MODELS_SERVER_URL);
 
 // ========== 静态文件服务 ==========
 if (fs.existsSync(publicPath)) {
@@ -599,15 +641,14 @@ if (fs.existsSync(publicPath)) {
 
 // ========== PostgreSQL数据库连接 ==========
 const pool = new Pool({
-    host: '192.168.31.145',
+    host: '127.0.0.1',
     port: 5432,
     database: 'metallurgy',
     user: 'postgres',
-    password: 'WJwzfwJ5JeXSkJ66',
+    password: '',
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 5000,
-    connectionString: 'postgresql://postgres:WJwzfwJ5JeXSkJ66@192.168.31.145:5432/metallurgy?search_path="User",public'
 });
 
 // 测试数据库连接

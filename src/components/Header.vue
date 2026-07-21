@@ -56,38 +56,32 @@
               <router-link to="/">首页</router-link>
             </li>
             <li>
-              <router-link to="/Search">数据库</router-link>
+              <router-link to="/thermodynamics">数据资源</router-link>
               <div class="bx-nav-fd">
                 <p>
-                  <router-link to="/thermodynamics">冶金热/动力学</router-link>
+                  <router-link to="/thermodynamics">热力学数据库</router-link>
                 </p>
                 <p>
-                  <router-link to="/carbon-emission">碳排放</router-link>
+                  <router-link to="/thermodynamics">动力学数据库</router-link>
                 </p>
                 <p>
-                  <router-link to="/fluid-dynamics">冶金流体力学</router-link>
+                  <router-link to="/thermodynamics">相图数据库</router-link>
                 </p>
                 <p>
-                  <router-link to="/electrochemical">电化学冶金</router-link>
+                  <router-link to="/thermodynamics">反应数据库</router-link>
                 </p>
                 <p>
-                  <router-link to="/process-data">工艺数据</router-link>
-                </p>
-              </div>
-            </li>
-            <li>
-              <router-link to="/">工具软件</router-link>
-              <div class="bx-nav-fd">
-                <p>
-                  <router-link to="/Prediction">冶金流体力学计算</router-link>
-                </p>
-                <p>
-                  <router-link to="/basic-tools">基础工具软件</router-link>
+                  <router-link to="/thermodynamics">数据源目录</router-link>
                 </p>
               </div>
             </li>
             <li>
               <router-link to="/scene">智能场景</router-link>
+              <div class="bx-nav-fd">
+                <p>
+                  <router-link to="/scene">模型工具中心</router-link>
+                </p>
+              </div>
             </li>
             <li>
               <router-link to="/basic-principles">研究领域</router-link>

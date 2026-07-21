@@ -1,0 +1,38 @@
+{
+  "apps": [
+    {
+      "name": "metallurgy-server",
+      "script": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\backend\\server.js",
+      "cwd": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\backend",
+      "exec_mode": "fork",
+      "instances": 1,
+      "watch": false,
+      "max_memory_restart": "500M",
+      "error_file": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\logs\\backend-err.log",
+      "out_file": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\logs\\backend-out.log",
+      "merge_logs": true,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000"
+      }
+    },
+    {
+      "name": "metallurgy-models",
+      "script": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\Tools\\models_server.py",
+      "cwd": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\Tools",
+      "interpreter": "python",
+      "exec_mode": "fork",
+      "instances": 1,
+      "watch": false,
+      "max_memory_restart": "500M",
+      "error_file": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\logs\\models-err.log",
+      "out_file": "D:\\a_workplace\\metallurgy(2)\\metallurgy_v2_20260520\\logs\\models-out.log",
+      "merge_logs": true,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss",
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      }
+    }
+  ]
+}

@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>A001 单位换算</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f1117;
+    color: #e1e4e8;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px;
+  }
+  .container {
+    max-width: 640px;
+    width: 100%;
+  }
+
+  /* 头部 */
+  .header {
+    text-align: center;
+    margin-bottom: 32px;
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #58a6ff, #3fb950);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header p {
+    color: #8b949e;
+    font-size: 14px;
+    margin-top: 6px;
+  }
+  .badge {
+    display: inline-block;
+    background: #1f2937;
+    border: 1px solid #30363d;
+    border-radius: 20px;
+    padding: 2px 12px;
+    font-size: 12px;
+    color: #8b949e;
+    margin-top: 8px;
+  }
+
+  /* 主卡片 */
+  .card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 28px;
+  }
+
+  /* 输入区域 */
+  .input-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .input-row .field {
+    flex: 1;
+  }
+  .input-row .field label {
+    display: block;
+    font-size: 12px;
+    color: #8b949e;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  .input-row input,
+  .input-row select {
+    width: 100%;
+    padding: 10px 12px;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    color: #e1e4e8;
+    font-size: 15px;
+    outline: none;
+    transition: border .2s;
+    appearance: auto;
+  }
+  .input-row input:focus,
+  .input-row select:focus {
+    border-color: #58a6ff;
+  }
+  .input-row input[type=number] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 单位选择器（两列并排） */
+  .unit-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .unit-row .field {
+    flex: 1;
+  }
+  .unit-row .field label {
+    display: block;
+    font-size: 12px;
+    color: #8b949e;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+
+  select optgroup {
+    font-size: 13px;
+    color: #8b949e;
+    background: #161b22;
+  }
+  select option {
+    font-size: 14px;
+    color: #e1e4e8;
+    background: #0d1117;
+    padding: 4px;
+  }
+
+  /* 换算按钮 */
+  .convert-btn {
+    width: 100%;
+    padding: 12px;
+    background: linear-gradient(135deg, #238636, #2ea043);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .2s, transform .1s;
+    margin-bottom: 12px;
+  }
+  .convert-btn:hover { opacity: .9; }
+  .convert-btn:active { transform: scale(.98); }
+
+  /* 交换按钮 */
+  .swap-btn {
+    background: none;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    color: #8b949e;
+    cursor: pointer;
+    padding: 4px 10px;
+    font-size: 13px;
+    margin-bottom: 12px;
+    display: inline-block;
+  }
+  .swap-btn:hover { border-color: #58a6ff; color: #58a6ff; }
+
+  /* 快捷预设 */
+  .presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+  .presets button {
+    padding: 5px 12px;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    color: #8b949e;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .presets button:hover {
+    border-color: #58a6ff;
+    color: #58a6ff;
+    background: #1c2333;
+  }
+
+  /* 结果区域 */
+  .result-box {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 18px;
+    min-height: 80px;
+  }
+  .result-box .result-main {
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .result-box .result-main .val { color: #3fb950; }
+  .result-box .result-main .src { color: #8b949e; font-weight: 400; }
+  .result-box .result-main .arrow { color: #58a6ff; margin: 0 8px; }
+
+  .result-meta {
+    display: flex;
+    gap: 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #8b949e;
+  }
+  .result-meta span { display: flex; align-items: center; gap: 4px; }
+
+  /* 告警 */
+  .warning-box {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #3d2e00;
+    border: 1px solid #d29922;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #d29922;
+  }
+  .warning-box .warn-icon { margin-right: 6px; }
+  .error-box {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: #3d0e14;
+    border: 1px solid #da3633;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #f85149;
+  }
+
+  /* 状态栏 */
+  .status {
+    text-align: center;
+    font-size: 13px;
+    color: #8b949e;
+    margin-top: 16px;
+  }
+  .status .dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .dot.online { background: #3fb950; }
+  .dot.offline { background: #da3633; }
+  .dot.loading { background: #d29922; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* 页脚 */
+  .footer {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 12px;
+    color: #484f58;
+  }
+  .footer a { color: #58a6ff; text-decoration: none; }
+  .footer a:hover { text-decoration: underline; }
+
+  /* 响应式 */
+  @media (max-width: 500px) {
+    .input-row { flex-direction: column; }
+    .unit-row { flex-direction: column; }
+    .card { padding: 16px; }
+    .result-box .result-main { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>⇄ 单位换算</h1>
+    <p>A001 · 量纲分析 &amp; 单位映射</p>
+    <span class="badge">P0 确定性公式/规则</span>
+  </div>
+
+  <div class="card">
+    <!-- 数值输入 -->
+    <div class="input-row">
+      <div class="field">
+        <label for="value">数值</label>
+        <input type="number" id="value" value="1" step="any">
+      </div>
+    </div>
+
+    <!-- 单位选择 -->
+    <div class="unit-row">
+      <div class="field">
+        <label for="source">从</label>
+        <select id="source"></select>
+      </div>
+      <div class="field">
+        <label for="target">到</label>
+        <select id="target"><option value="">— 选择目标单位 —</option></select>
+      </div>
+    </div>
+
+    <!-- 交换 & 快捷 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <button class="swap-btn" onclick="swapUnits()">⇄ 交换</button>
+    </div>
+
+    <div class="presets" id="presets"></div>
+
+    <button class="convert-btn" onclick="doConvert()">换算</button>
+
+    <!-- 结果 -->
+    <div class="result-box" id="result">
+      <div style="color:#8b949e;font-size:14px;text-align:center;padding:12px 0">
+        输入数值并点击「换算」
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">
+    <span class="dot" id="statusDot"></span>
+    <span id="statusText">连接中...</span>
+  </div>
+
+  <div class="footer">
+    <a href="https://github.com/nousresearch/hermes" target="_blank">Hermes Agent</a>
+    · 绿色低碳冶金 · 120小模型
+  </div>
+</div>
+
+<script>
+const API = '';
+
+// ── 预设快捷换算 ──
+const PRESETS = [
+  { label: '1 t → kg', value: 1, from: 't', to: 'kg' },
+  { label: '1600°C → K', value: 1600, from: '°C', to: 'K' },
+  { label: '1 MPa → psi', value: 1, from: 'MPa', to: 'psi' },
+  { label: '7.85 g/cm³ → kg/m³', value: 7.85, from: 'g/cm³', to: 'kg/m³' },
+  { label: '100 kWh/t → kJ/kg', value: 100, from: 'kWh/t', to: 'kJ/kg' },
+  { label: '100 L/min → m³/h', value: 100, from: 'L/min', to: 'm³/h' },
+  { label: '1 atm → Pa', value: 1, from: 'atm', to: 'Pa' },
+  { label: '0.05 wt% → ppm', value: 0.05, from: 'wt%', to: 'ppm' },
+  { label: '500 cP → Pa·s', value: 500, from: 'cP', to: 'Pa·s' },
+  { label: '1 t/h → kg/s', value: 1, from: 't/h', to: 'kg/s' },
+];
+
+let unitData = null;
+
+// ── 加载单位数据到下拉框 ──
+async function loadUnits() {
+  try {
+    const resp = await fetch(API + '/units');
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    unitData = data;
+
+    const srcSel = document.getElementById('source');
+    const tgtSel = document.getElementById('target');
+    srcSel.innerHTML = '';
+    tgtSel.innerHTML = '<option value="">— 选择目标单位 —</option>';
+
+    const catLabel = {};
+    data.categories.forEach(c => { catLabel[c.key] = c.label; });
+
+    // 按类别分组
+    const byCat = data.units_by_category;
+
+    for (const [cat, units] of Object.entries(byCat)) {
+      const label = catLabel[cat] || cat;
+      const sg = document.createElement('optgroup');
+      sg.label = label;
+
+      const tg = document.createElement('optgroup');
+      tg.label = label;
+
+      units.forEach(u => {
+        const so = document.createElement('option');
+        so.value = u.symbol;
+        so.textContent = u.symbol + ' — ' + u.name + (u.description ? ' (' + u.description + ')' : '');
+        so.title = u.description;
+        sg.appendChild(so);
+
+        const to = document.createElement('option');
+        to.value = u.symbol;
+        to.textContent = u.symbol + ' — ' + u.name + (u.description ? ' (' + u.description + ')' : '');
+        to.title = u.description;
+        tg.appendChild(to);
+      });
+
+      srcSel.appendChild(sg);
+      tgtSel.appendChild(tg);
+    }
+
+    // 默认选中
+    srcSel.value = 't';
+    tgtSel.value = 'kg';
+
+    setStatus('online', '服务就绪 · ' + Object.keys(byCat).length + ' 类 · ' + countUnits(byCat) + ' 个单位');
+    renderPresets();
+  } catch (e) {
+    setStatus('offline', '连接失败: ' + e.message);
+    // 用硬编码数据兜底
+    fallbackUnits();
+  }
+}
+
+function countUnits(byCat) {
+  let n = 0;
+  for (const v of Object.values(byCat)) n += v.length;
+  return n;
+}
+
+function fallbackUnits() {
+  // 如果 API 不通，至少填几个常用单位
+  const src = document.getElementById('source');
+  const tgt = document.getElementById('target');
+  src.innerHTML = tgt.innerHTML = '<option value="m">m — 米</option><option value="km">km — 千米</option><option value="mm">mm — 毫米</option><option value="t" selected>t — 吨</option><option value="kg">kg — 千克</option><option value="°C">°C — 摄氏度</option><option value="K">K — 开尔文</option><option value="MPa">MPa — 兆帕</option><option value="bar">bar — 巴</option><option value="kWh/t">kWh/t — 千瓦时每吨</option><option value="J">J — 焦耳</option>';
+  setStatus('online', '离线模式（少量单位）');
+  renderPresets();
+}
+
+// ── 渲染快捷按钮 ──
+function renderPresets() {
+  const box = document.getElementById('presets');
+  box.innerHTML = '';
+  PRESETS.forEach(p => {
+    const btn = document.createElement('button');
+    btn.textContent = p.label;
+    btn.onclick = () => {
+      document.getElementById('value').value = p.value;
+      document.getElementById('source').value = p.from;
+      document.getElementById('target').value = p.to;
+      doConvert();
+    };
+    box.appendChild(btn);
+  });
+}
+
+// ── 交换按钮 ──
+function swapUnits() {
+  const src = document.getElementById('source');
+  const tgt = document.getElementById('target');
+  const tmp = src.value;
+  src.value = tgt.value;
+  tgt.value = tmp;
+  doConvert();
+}
+
+// ── 换算 ──
+async function doConvert() {
+  const value = parseFloat(document.getElementById('value').value);
+  const source_unit = document.getElementById('source').value;
+  const target_unit = document.getElementById('target').value;
+
+  if (isNaN(value)) {
+    showResultError('请输入有效的数值');
+    return;
+  }
+  if (!source_unit || !target_unit) {
+    showResultError('请选择源单位和目标单位');
+    return;
+  }
+  if (source_unit === target_unit) {
+    showResultError('源单位和目标单位相同，无需换算');
+    return;
+  }
+
+  const resultBox = document.getElementById('result');
+
+  try {
+    const resp = await fetch(API + '/convert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value, source_unit, target_unit, strict: false }),
+    });
+    const data = await resp.json();
+
+    if (!data.success) {
+      showResultError(data.error || '换算失败');
+      return;
+    }
+
+    // 渲染结果
+    let html = '';
+    html += `<div class="result-main">`;
+    html += `<span class="src">${data.source_value} ${data.source_unit}</span>`;
+    html += `<span class="arrow">→</span>`;
+    html += `<span class="val">${formatNum(data.value)} </span>`;
+    html += `<span class="src">${data.target_unit}</span>`;
+    html += `</div>`;
+
+    html += `<div class="result-meta">`;
+    if (data.conversion_factor) {
+      html += `<span>📐 因子 <strong>${formatNum(data.conversion_factor)}</strong></span>`;
+    }
+    html += `<span>📂 ${data.category || '—'}</span>`;
+    html += `<span>📏 [${data.dimension || '?'}]</span>`;
+    html += `</div>`;
+
+    // 告警
+    if (data.warnings && data.warnings.length > 0) {
+      data.warnings.forEach(w => {
+        if (w.level === 'error') {
+          html += `<div class="error-box">⚠️ ${w.message}</div>`;
+        } else {
+          html += `<div class="warning-box"><span class="warn-icon">⚠</span> ${w.message}</div>`;
+        }
+      });
+    }
+
+    resultBox.innerHTML = html;
+  } catch (e) {
+    showResultError('请求失败: ' + e.message);
+  }
+}
+
+function showResultError(msg) {
+  document.getElementById('result').innerHTML =
+    `<div class="error-box">❌ ${msg}</div>`;
+}
+
+function formatNum(n) {
+  if (typeof n !== 'number') return String(n);
+  if (Number.isInteger(n) && Math.abs(n) < 1e15) return n.toLocaleString();
+  if (Math.abs(n) > 1e6 || Math.abs(n) < 1e-4) return n.toExponential(6);
+  return n.toLocaleString(undefined, { maximumSignificantDigits: 10 });
+}
+
+// ── 状态 ──
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'dot ' + state;
+  txt.textContent = text;
+}
+
+// ── Enter 键触发换算 ──
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('value').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doConvert();
+  });
+  // 下拉框回车也触发
+  document.getElementById('source').addEventListener('change', () => {});
+  document.getElementById('target').addEventListener('change', () => {});
+  loadUnits();
+});
+</script>
+</body>
+</html>

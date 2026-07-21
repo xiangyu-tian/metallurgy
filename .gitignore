@@ -6,6 +6,8 @@ dist/
 Thumbs.db
 *.tar.gz
 venv/
+__pycache__/
+*.pyc
 %USERPROFILE%/
 docs/superpowers/
 backend/src/views/

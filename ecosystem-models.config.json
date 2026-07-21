@@ -1,0 +1,21 @@
+{
+  "apps": [
+    {
+      "name": "metallurgy-models",
+      "script": "models_server.py",
+      "cwd": "./Tools",
+      "interpreter": "python",
+      "exec_mode": "fork",
+      "instances": 1,
+      "watch": false,
+      "max_memory_restart": "500M",
+      "env": {
+        "PYTHONUNBUFFERED": "1"
+      },
+      "error_file": "../logs/models-err.log",
+      "out_file": "../logs/models-out.log",
+      "merge_logs": true,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss"
+    }
+  ]
+}
