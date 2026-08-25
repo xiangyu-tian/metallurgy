@@ -1,0 +1,21 @@
+{
+  "asset_id": "BOF-ENGINEERING-BASELINE-2026.08-v1",
+  "dataset_id": "DS_BOF_PROCESS_PARAMETERS",
+  "parameter_set_id": "BOF_ENGINEERING_BASELINE_V1",
+  "process": "BOF_STATIC_BALANCE",
+  "source": "Transparent engineering constants used by the BOF static material and heat balance; not a plant-control calibration.",
+  "applicability": {
+    "model_scope": "zero-dimensional static estimate",
+    "review_status": "engineering baseline; metallurgical review required before plant-control use"
+  },
+  "parameters": [
+    {"code": "normal_molar_volume", "value": 22.414, "unit": "Nm3/kmol", "source_ref": "Ideal-gas molar volume at 273.15 K and 101.325 kPa"},
+    {"code": "oxygen_molar_mass", "value": 31.998, "unit": "kg/kmol", "source_ref": "Twice the IUPAC 2021 oxygen atomic weight"},
+    {"code": "reference_temperature", "value": 298.15, "unit": "K", "source_ref": "Standard thermodynamic reference temperature"},
+    {"code": "scrap_melting_temperature", "value": 1809.0, "unit": "K", "source_ref": "Pure iron melting-point engineering approximation"},
+    {"code": "cp_hot_metal", "value": 0.82, "unit": "kJ/(kg*K)", "source_ref": "Constant-property BOF engineering baseline"},
+    {"code": "cp_scrap_solid", "value": 0.70, "unit": "kJ/(kg*K)", "source_ref": "Constant-property BOF engineering baseline"},
+    {"code": "latent_heat_scrap", "value": 272.0, "unit": "kJ/kg", "source_ref": "Iron fusion enthalpy engineering approximation"},
+    {"code": "cp_scrap_liquid", "value": 0.82, "unit": "kJ/(kg*K)", "source_ref": "Constant-property BOF engineering baseline"}
+  ]
+}

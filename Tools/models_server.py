@@ -21,21 +21,29 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from models_core import ModelRegistry
 from models_core.base import InvocationContext
+from models_core.services import (
+    ExperimentService,
+    InMemoryTraceStore,
+    ModelExecutionService,
+)
 
 # ── 初始化注册表 ──
 registry = ModelRegistry()
 count = registry.discover()
-print(f"✅ 已注册 {count} 个模型: {[m.model_id for m in registry._models.values()]}")
+print(f"[models-server] registered {count} models: {[m.model_id for m in registry._models.values()]}")
+trace_store = InMemoryTraceStore()
+execution_service = ModelExecutionService(registry, trace_store)
+experiment_service = ExperimentService(registry, execution_service, trace_store)
 
 # ── FastAPI 应用 ──
 app = FastAPI(
     title="冶金平台 — 统一模型微服务",
-    version="0.1.0",
-    description="120个小模型的统一注册、调用与校验服务",
+    version="0.2.0",
+    description="真实可执行冶金工具的统一注册、调用与校验服务",
 )
 
 app.add_middleware(
@@ -49,20 +57,17 @@ app.add_middleware(
 # ── 请求/响应模型 ──
 
 class InvokeRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "example": {
+            "input": {"reaction": "FeO + C → Fe + CO", "temperature": 1873},
+            "options": {"validate_boundary": True, "return_provenance": True},
+        }
+    })
     input: dict = Field(..., description="模型输入参数，根据 input_schema 定义")
     options: dict = Field(default_factory=lambda: {
         "validate_boundary": True,
         "return_provenance": True,
     })
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "input": {"reaction": "FeO + C → Fe + CO", "temperature": 1873},
-                "options": {"validate_boundary": True, "return_provenance": True},
-            }
-        }
-
 
 class InvokeResponse(BaseModel):
     trace_id: str
@@ -92,18 +97,45 @@ class ModelDetailResponse(BaseModel):
     validation_rules: list
 
 
+class ValidateRequest(BaseModel):
+    input: dict = Field(..., description="待校验的模型输入参数")
+
+
+class ToolCallRequest(BaseModel):
+    """大模型function call的统一参数信封。"""
+    arguments: dict = Field(..., description="必须符合工具parameters JSON Schema")
+    options: dict = Field(default_factory=lambda: {
+        "validate_boundary": True,
+        "return_provenance": True,
+    })
+
+
+class ExperimentRequest(BaseModel):
+    user_query: str
+    mode: str = Field(..., description="direct / forced / autonomous")
+    model_code: Optional[str] = None
+    arguments: dict = Field(default_factory=dict)
+    baseline_answer: str = ""
+    llm_name: str = "external-orchestrator"
+    prompt_version: str = "v1"
+    result_validation_enabled: bool = True
+
+
 # ── API 路由 ──
 
 @app.get("/api/v1/health")
 def health():
+    counts = registry.get_counts()
     return {
         "status": "ok",
         "service": "models-server",
-        "registered_models": len(registry._models),
+        **counts,
+        "registered_models": counts["registered_count"],
         "model_ids": sorted(registry._models.keys()),
     }
 
 
+@app.get("/api/models")
 @app.get("/api/v1/models")
 def list_models(scenario: Optional[str] = None):
     """列出所有模型，可按场景筛选"""
@@ -113,18 +145,63 @@ def list_models(scenario: Optional[str] = None):
         models = registry.list_models()
 
     return {
+        **registry.get_counts(),
         "total": len(models),
         "models": models,
     }
 
 
+@app.get("/api/tools")
+@app.get("/api/v1/tools")
+def list_llm_tools(
+    fully_eligible: bool = True,
+    scenario: Optional[str] = None,
+):
+    """返回大模型可直接使用的function-tool清单，默认只暴露最终合格项。"""
+    tools = registry.list_tool_definitions(
+        fully_eligible_only=fully_eligible,
+        scenario=scenario,
+    )
+    return {
+        **registry.get_counts(),
+        "fully_eligible_filter": fully_eligible,
+        "total": len(tools),
+        "tools": tools,
+        "call_endpoint_template": "/api/v1/tools/{function.name}/call",
+    }
+
+
+@app.get("/api/models/{model_id}")
 @app.get("/api/v1/models/{model_id}")
 def get_model(model_id: str):
     """获取单个模型详情"""
     model = registry.get(model_id)
     if not model:
         raise HTTPException(status_code=404, detail=f"未知模型: {model_id}")
-    return model.get_registry_entry()
+    return next(
+        entry for entry in registry.list_models()
+        if entry["model_code"] == model_id
+    )
+
+
+@app.get("/api/tools/{tool_name}")
+@app.get("/api/v1/tools/{tool_name}")
+def get_llm_tool(tool_name: str):
+    """读取单个最终合格的大模型工具定义。"""
+    model = registry.get_by_tool_name(tool_name)
+    if not model:
+        known = registry.get_by_tool_name(tool_name, fully_eligible_only=False)
+        if known:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error_code": "TOOL_NOT_FULLY_ELIGIBLE",
+                    "model_code": known.model_id,
+                    "eligibility": registry.eligibility_report(known.model_id),
+                },
+            )
+        raise HTTPException(status_code=404, detail=f"未知工具函数: {tool_name}")
+    return model.get_tool_definition(registry.eligibility_report(model.model_id))
 
 
 @app.post("/api/v1/models/{model_id}/invoke", response_model=InvokeResponse)
@@ -169,6 +246,87 @@ def invoke_model(model_id: str, req: InvokeRequest):
     )
 
 
+@app.post("/api/models/{model_id}/validate")
+@app.post("/api/v1/models/{model_id}/validate")
+def validate_model(model_id: str, req: ValidateRequest):
+    """仅执行格式、单位枚举和适用域前置校验。"""
+    return execution_service.validate(model_id, req.input)
+
+
+@app.post("/api/models/{model_id}/execute")
+@app.post("/api/v1/models/{model_id}/execute")
+def execute_model(model_id: str, req: InvokeRequest):
+    """按统一协议执行模型并保存完整执行轨迹。"""
+    return execution_service.execute(
+        model_id,
+        req.input,
+        options=req.options,
+        user_or_agent="api",
+    )
+
+
+@app.post("/api/tools/{tool_name}/call")
+@app.post("/api/v1/tools/{tool_name}/call")
+def call_llm_tool(tool_name: str, req: ToolCallRequest):
+    """执行大模型function call；未通过四维资格的工具不会进入此入口。"""
+    model = registry.get_by_tool_name(tool_name)
+    if not model:
+        known = registry.get_by_tool_name(tool_name, fully_eligible_only=False)
+        if known:
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error_code": "TOOL_NOT_FULLY_ELIGIBLE",
+                    "model_code": known.model_id,
+                    "eligibility": registry.eligibility_report(known.model_id),
+                },
+            )
+        raise HTTPException(status_code=404, detail=f"未知工具函数: {tool_name}")
+    return execution_service.execute(
+        model.model_id,
+        req.arguments,
+        options=req.options,
+        user_or_agent="llm-function-call",
+    )
+
+
+@app.get("/api/executions/{execution_id}")
+@app.get("/api/v1/executions/{execution_id}")
+def get_execution(execution_id: str):
+    record = trace_store.get_execution(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"未知执行记录: {execution_id}")
+    return record
+
+
+@app.post("/api/experiments/run")
+@app.post("/api/v1/experiments/run")
+def run_experiment(req: ExperimentRequest):
+    """运行直接回答、强制调用或自主调用实验。"""
+    try:
+        return experiment_service.run(
+            user_query=req.user_query,
+            mode=req.mode,
+            model_code=req.model_code,
+            arguments=req.arguments,
+            baseline_answer=req.baseline_answer,
+            llm_name=req.llm_name,
+            prompt_version=req.prompt_version,
+            result_validation_enabled=req.result_validation_enabled,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/api/experiments/{experiment_id}")
+@app.get("/api/v1/experiments/{experiment_id}")
+def get_experiment(experiment_id: str):
+    record = trace_store.get_experiment(experiment_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"未知实验记录: {experiment_id}")
+    return record
+
+
 @app.get("/api/v1/scenarios")
 def list_scenarios():
     """列出所有业务场景"""
@@ -187,13 +345,15 @@ import psycopg2
 import psycopg2.extras
 
 DB_CONFIG = {
-    'host': '127.0.0.1',
-    'port': 5432,
-    'database': 'metallurgy',
-    'user': 'postgres',
-    'password': '',
-    'connect_timeout': 3,
+    'database': os.getenv('METALLURGY_DB_NAME', 'metallurgy'),
+    'user': os.getenv('METALLURGY_DB_USER', 'postgres'),
+    'password': os.getenv('METALLURGY_DB_PASSWORD', ''),
+    'connect_timeout': int(os.getenv('METALLURGY_DB_CONNECT_TIMEOUT', '3')),
 }
+if os.getenv('METALLURGY_DB_HOST'):
+    DB_CONFIG['host'] = os.environ['METALLURGY_DB_HOST']
+if os.getenv('METALLURGY_DB_PORT'):
+    DB_CONFIG['port'] = int(os.environ['METALLURGY_DB_PORT'])
 
 
 def _get_db():

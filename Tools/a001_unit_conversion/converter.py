@@ -130,8 +130,10 @@ def convert_units(
                 error=msg,
             )
 
-    # ── 计算换算因子（用 1.0 做参考值） ──
-    factor_ref = _convert_linear(1.0, src, tgt)
+    # ── 计算换算比例 ──
+    # 偏移温标的 ``convert(1)`` 不是比例（1 °C != 274.15 K 的比例）。
+    # 比例只由两个单位的 SI scale 决定，偏移由实际换算值单独处理。
+    factor_ref = src.to_si_factor / tgt.to_si_factor
 
     # ── 执行换算 ──
     result_value = _convert_linear(value, src, tgt)

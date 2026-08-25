@@ -1,0 +1,23 @@
+{
+  "baseline_version": "2.0.0",
+  "reference_policy": "解析解、守恒关系与仓库内注明来源的 NIST-JANAF/Shomate 数据",
+  "cases": [
+    {"case_id":"G-A001-001","model_code":"A001","input":{"value":1000,"source_unit":"kg","target_unit":"t"},"expected":{"path":"value","value":1.0},"tolerance":{"abs":1e-12},"reference":"SI 质量单位解析换算"},
+    {"case_id":"G-A002-001","model_code":"A002","input":{"formula":"Fe2O3"},"expected":{"path":"total_atoms","value":5.0},"tolerance":{"abs":0},"reference":"化学式计量解析"},
+    {"case_id":"G-A003-001","model_code":"A003","input":{"formula":"Fe2O3"},"expected":{"path":"molar_mass","value":159.687},"tolerance":{"abs":0.001},"reference":"IUPAC 2021 原子量"},
+    {"case_id":"G-A004-001","model_code":"A004","input":{"compositions":{"Fe":94,"C":4,"Si":2}},"expected":{"path":"sum_after","value":1.0},"tolerance":{"abs":1e-12},"reference":"组成归一化恒等式"},
+    {"case_id":"G-A005-001","model_code":"A005","input":{"input_streams":[{"name":"feed","mass":100,"elements":{"Fe":0.98,"C":0.02}}],"output_streams":[{"name":"product","mass":100,"elements":{"Fe":0.98,"C":0.02}}]},"expected":{"path":"mass_closure_rate","value":1.0},"tolerance":{"abs":1e-12},"reference":"质量守恒解析算例"},
+    {"case_id":"G-B001-001","model_code":"B001","input":{"species":"Fe(s)","temperature":1000},"expected":{"path":"Cp","value":35.47286},"tolerance":{"abs":0.00001},"reference":"NIST Shomate 系数"},
+    {"case_id":"G-B002-001","model_code":"B002","input":{"species":"O2(g)","temperature":1000},"expected":{"path":"Cp","value":34.88297446665601},"tolerance":{"abs":0.000000001},"reference":"GRI-Mech 3.0 NASA7 O2 系数"},
+    {"case_id":"G-B003-001","model_code":"B003","input":{"species":"Fe(s)","temperature_start":298.15,"temperature_end":1000},"expected":{"path":"delta_H","value":21.3868},"tolerance":{"abs":0.0001},"reference":"Shomate 焓增量差"},
+    {"case_id":"G-B004-001","model_code":"B004","input":{"species":"Fe(s)","temperature_start":298.15,"temperature_end":1000},"expected":{"path":"delta_S","value":35.5333},"tolerance":{"abs":0.0001},"reference":"Shomate 熵函数差"},
+    {"case_id":"G-B005-001","model_code":"B005","input":{"species":"Fe(s)","temperature":1000},"expected":{"path":"G","value":-35.2788},"tolerance":{"abs":0.0001},"reference":"G=H-TS"},
+    {"case_id":"G-B006-001","model_code":"B006","input":{"reaction":"C + O₂ → CO₂","temperature":298.15},"expected":{"path":"delta_H","value":-393.5},"tolerance":{"abs":0.1},"reference":"NIST-JANAF"},
+    {"case_id":"G-B007-001","model_code":"B007","input":{"reaction":"C + O₂ → CO₂","temperature":298.15},"expected":{"path":"delta_S","value":2.9},"tolerance":{"abs":0.1},"reference":"NIST-JANAF"},
+    {"case_id":"G-B008-001","model_code":"B008","input":{"reaction":"C + O₂ → CO₂","temperature":1000},"expected":{"path":"delta_G","value":-396.4},"tolerance":{"abs":0.1},"reference":"ΔG=ΔH-TΔS"},
+    {"case_id":"G-B009-001","model_code":"B009","input":{"reaction":"C + O₂ → CO₂","temperature":1000},"expected":{"path":"log10_K","value":20.705407015791828},"tolerance":{"abs":0.000000001},"reference":"lnK=-ΔG/(CODATA R T)"},
+    {"case_id":"G-B019-001","model_code":"B019","input":{"overall_composition":0.4,"phase1_composition":0.2,"phase2_composition":0.8},"expected":{"path":"phase2_fraction","value":0.333333},"tolerance":{"abs":0.000001},"reference":"二元杠杆规则"},
+    {"case_id":"G-C001-001","model_code":"C001","input":{"A":10000000,"Ea":80000,"temperature":1000,"Ea_unit":"J/mol"},"expected":{"path":"k","value":662.6899591412687},"tolerance":{"rel":1e-12},"reference":"Arrhenius 解析解，CODATA R"},
+    {"case_id":"G-C002-001","model_code":"C002","input":{"D0":0.0001,"Q":100000,"temperature":1000,"Q_unit":"J/mol"},"expected":{"path":"D","value":5.98e-10},"tolerance":{"abs":1e-12},"reference":"扩散 Arrhenius 解析解"}
+  ]
+}

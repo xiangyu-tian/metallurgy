@@ -1,0 +1,35 @@
+"""统一模型协议使用的稳定错误码。"""
+
+STANDARD_ERROR_CODES = (
+    "INVALID_INPUT",
+    "UNIT_MISMATCH",
+    "OUT_OF_DOMAIN",
+    "MISSING_DATA",
+    "DATA_BACKEND_UNAVAILABLE",
+    "MULTIPLE_SPECIES_MATCH",
+    "PHASE_MISMATCH",
+    "TEMPERATURE_RANGE_ERROR",
+    "REACTION_NOT_BALANCED",
+    "NUMERICAL_ERROR",
+    "MODEL_NOT_APPLICABLE",
+    "UNKNOWN_MODEL",
+    "INTERNAL_ERROR",
+)
+
+
+LEGACY_ERROR_CODE_MAP = {
+    "DIMENSION_MISMATCH": "UNIT_MISMATCH",
+    "UNSUPPORTED_CONVERSION": "UNIT_MISMATCH",
+    "PARSE_ERROR": "INVALID_INPUT",
+    "NO_DATA": "MISSING_DATA",
+    "OUT_OF_RANGE": "OUT_OF_DOMAIN",
+    "UNSUPPORTED_REACTION": "MODEL_NOT_APPLICABLE",
+}
+
+
+def normalize_error_code(code):
+    """把历史模型错误码归一化，同时允许协议内标准码原样通过。"""
+    if not code:
+        return None
+    normalized = LEGACY_ERROR_CODE_MAP.get(code, code)
+    return normalized if normalized in STANDARD_ERROR_CODES else "INTERNAL_ERROR"

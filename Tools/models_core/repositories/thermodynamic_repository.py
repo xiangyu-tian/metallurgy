@@ -2,14 +2,17 @@
 thermodynamic_repository — 统一热力学数据访问层
 
 所有 B 系列模型通过此层获取数据，不直接写 SQL。
-查询顺序：关联式 → 离散点 → 内存兜底
+查询顺序：关联式 → 离散点；数据缺失或数据库不可用时不做内存兜底
 返回结果带完整溯源。
 """
 from __future__ import annotations
 import json
 import math
+import os
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass, field
+
+from .reference_repository import RepositoryError
 
 
 # ── 返回类型 ──
@@ -22,7 +25,7 @@ class ThermoResult:
     property_code: str
     value: float
     unit: str
-    method: str = "unknown"           # correlation / table / builtin_fallback
+    method: str = "unknown"           # correlation / table
     equation_type: str = ""
     correlation_id: int = 0
     source_id: str = ""
@@ -49,34 +52,44 @@ class ThermodynamicRepository:
         if self._db is None:
             import psycopg2
             import psycopg2.extras
-            self._db = psycopg2.connect(
-                host='127.0.0.1', port=5432, database='metallurgy',
-                user='postgres', password='', connect_timeout=3,
-            )
+            config = {
+                "database": os.getenv("METALLURGY_DB_NAME", "metallurgy"),
+                "user": os.getenv("METALLURGY_DB_USER", "postgres"),
+                "password": os.getenv("METALLURGY_DB_PASSWORD", ""),
+                "connect_timeout": int(os.getenv("METALLURGY_DB_CONNECT_TIMEOUT", "3")),
+            }
+            if os.getenv("METALLURGY_DB_HOST"):
+                config["host"] = os.environ["METALLURGY_DB_HOST"]
+            if os.getenv("METALLURGY_DB_PORT"):
+                config["port"] = int(os.environ["METALLURGY_DB_PORT"])
+            self._db = psycopg2.connect(**config)
         return self._db
 
     def find_correlation(self, species_id: str, phase: str,
                          temperature: float,
                          equation_type: str = "SHOMATE") -> Optional[Dict]:
         """查关联式表，找到覆盖目标温度的系数"""
-        import psycopg2
-        import psycopg2.extras
-        conn = self._get_db()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
-            SELECT id, equation_type, temperature_min_k, temperature_max_k,
-                   coefficients, coefficient_units, source_id, reference_text
-            FROM metallurgy_v2.thermodynamic_correlation
-            WHERE species_id = %s AND phase = %s
-              AND %s BETWEEN temperature_min_k AND temperature_max_k
-              AND equation_type = %s
-              AND is_active = TRUE
-            ORDER BY priority
-            LIMIT 1
-        """, (species_id, phase, temperature, equation_type))
-        row = cur.fetchone()
-        cur.close()
-        return dict(row) if row else None
+        try:
+            import psycopg2.extras
+
+            conn = self._get_db()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute("""
+                SELECT id, equation_type, temperature_min_k, temperature_max_k,
+                       coefficients, coefficient_units, source_id, reference_text
+                FROM metallurgy_v2.thermodynamic_correlation
+                WHERE species_id = %s AND phase = %s
+                  AND %s BETWEEN temperature_min_k AND temperature_max_k
+                  AND equation_type = %s
+                  AND is_active = TRUE
+                ORDER BY priority
+                LIMIT 1
+            """, (species_id, phase, temperature, equation_type))
+            row = cur.fetchone()
+            cur.close()
+            return dict(row) if row else None
+        except Exception as exc:
+            raise RepositoryError(f"热力学关联式查询失败: {exc}") from exc
 
     def evaluate_shomate(self, species_id: str, phase: str,
                          temperature: float) -> Optional[EvaluateResult]:
@@ -137,6 +150,8 @@ class ThermodynamicRepository:
                      temperature: float) -> Optional[ThermoResult]:
         """查离散点值表"""
         try:
+            import psycopg2.extras
+
             conn = self._get_db()
             cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cur.execute("""
@@ -160,8 +175,8 @@ class ThermodynamicRepository:
                     source_id=row.get("source_ref", ""),
                 )
             return None
-        except Exception:
-            return None
+        except Exception as exc:
+            raise RepositoryError(f"热力学离散点查询失败: {exc}") from exc
 
     def evaluate(self, species: str, phase: str, temperature: float,
                  properties: List[str] = None) -> EvaluateResult:
@@ -192,19 +207,6 @@ class ThermodynamicRepository:
                 if tp:
                     results[p] = {"value": tp.value, "unit": tp.unit}
                     provenance[p] = {"source": tp.source_id, "method": tp.method}
-
-        # 3. 兜底：chemical_data.py
-        if not results:
-            try:
-                from .chemical_data import calc_shomate
-                cd = calc_shomate(f"{species}({phase[0]})", temperature)
-                if cd:
-                    results["cp"] = {"value": cd["Cp"], "unit": "J/(mol·K)"}
-                    results["entropy"] = {"value": cd["S"], "unit": "J/(mol·K)"}
-                    results["enthalpy"] = {"value": cd["H_minus_H298"], "unit": "kJ/mol"}
-                    provenance = {"method": "builtin_fallback"}
-            except ImportError:
-                pass
 
         return EvaluateResult(
             species=species, phase=phase, temperature=temperature,

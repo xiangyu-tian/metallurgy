@@ -17,5 +17,7 @@ models_core — 冶金平台统一模型内核
 from .base import BaseModelTool, ModelResult, BoundaryCheck, InvocationContext
 from .registry import ModelRegistry
 from .chemical_data import THERMOCHEMICAL_DB, ELEMENT_ATOMIC_WEIGHTS
+from .errors import STANDARD_ERROR_CODES
+from .services import ExperimentService, InMemoryTraceStore, ModelExecutionService
 
 __version__ = "0.1.0"
