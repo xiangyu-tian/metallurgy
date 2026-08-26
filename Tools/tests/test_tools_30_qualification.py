@@ -1,4 +1,4 @@
-"""Scientific integration tests for the approved 30-tool milestone."""
+"""Scientific integration tests preserving the 30-tool baseline through P0-W1."""
 
 import math
 import os
@@ -11,15 +11,17 @@ sys.path.insert(0, TOOLS_DIR)
 from models_core import ModelRegistry
 
 
-EXPECTED_IDS = {
+BASELINE_IDS = {
     "A001", "A002", "A003", "A004", "A005", "A006", "A007",
     "B001", "B002", "B003", "B004", "B005", "B006", "B007", "B008", "B009",
     "B010", "B011", "B014", "B015", "B018", "B019",
     "C001", "C002", "C003", "C004", "T001", "T002", "D001", "D002",
 }
+W1_IDS = {"A101", "A008", "D021", "D004"}
+EXPECTED_IDS = BASELINE_IDS | W1_IDS
 
 
-class ThirtyToolMilestoneTests(unittest.TestCase):
+class ThirtyToolBaselineAndW1Tests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.registry = ModelRegistry()
@@ -31,19 +33,21 @@ class ThirtyToolMilestoneTests(unittest.TestCase):
         self.assertTrue(result.provenance)
         return result
 
-    def test_exactly_thirty_registered_and_qualified(self):
+    def test_thirty_baseline_assets_and_four_w1_tools_are_qualified(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 30,
-            "runtime_tool_count": 30,
-            "catalog_coverage_count": 26,
-            "qualified_executable_count": 30,
-            "implementation_qualified_count": 30,
+            "registered_count": 34,
+            "runtime_tool_count": 34,
+            "catalog_coverage_count": 30,
+            "qualified_executable_count": 34,
+            "implementation_qualified_count": 34,
             "data_required_count": 14,
             "data_qualified_count": 14,
-            "interface_qualified_count": 30,
-            "fully_eligible_count": 30,
+            "interface_qualified_count": 34,
+            "fully_eligible_count": 34,
         })
-        self.assertEqual({x["model_code"] for x in self.registry.list_models(True)}, EXPECTED_IDS)
+        registered = {x["model_code"] for x in self.registry.list_models(True)}
+        self.assertEqual(registered, EXPECTED_IDS)
+        self.assertTrue(BASELINE_IDS <= registered)
 
     def test_every_tool_executes_five_qualification_cases(self):
         for code in sorted(EXPECTED_IDS):

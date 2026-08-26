@@ -372,6 +372,10 @@ class BaseModelTool:
             return ["输入必须是 JSON 对象"]
 
         errors = []
+        allowed_fields = {field.name for field in self.input_fields}
+        unknown_fields = sorted(set(params) - allowed_fields)
+        if unknown_fields:
+            errors.append(f"包含未声明参数: {', '.join(unknown_fields)}")
         for f in self.input_fields:
             value = params.get(f.name)
             is_empty = value is None or value == "" or value == {} or value == []

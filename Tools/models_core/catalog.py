@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v1.json"
+CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v2.json"
 
 
 @lru_cache(maxsize=1)
@@ -23,8 +23,17 @@ def load_catalog_crosswalk() -> Dict[str, Any]:
         payload = json.load(handle)
     entries = payload.get("entries", [])
     runtime_codes = [entry.get("runtime_model_code") for entry in entries]
-    if len(entries) != 30 or len(runtime_codes) != len(set(runtime_codes)):
-        raise ValueError("工具目录交叉映射必须完整且唯一地覆盖当前30项运行时资产")
+    expected_count = payload.get("runtime_registry", {}).get("registered_count_at_baseline")
+    if not isinstance(expected_count, int) or expected_count <= 0:
+        raise ValueError("工具目录交叉映射缺少有效registered_count_at_baseline")
+    if len(entries) != expected_count or len(runtime_codes) != len(set(runtime_codes)):
+        raise ValueError(f"工具目录交叉映射必须完整且唯一地覆盖当前{expected_count}项运行时资产")
+    covered = [entry.get("catalog_id") for entry in entries if entry.get("catalog_coverage")]
+    if None in covered or len(covered) != len(set(covered)):
+        raise ValueError("可覆盖的表格目录ID必须非空且唯一")
+    summary = payload.get("summary", {})
+    if summary.get("runtime_assets_preserved") != len(entries) or summary.get("catalog_entries_covered") != len(covered):
+        raise ValueError("工具目录交叉映射汇总计数与条目不一致")
     return payload
 
 

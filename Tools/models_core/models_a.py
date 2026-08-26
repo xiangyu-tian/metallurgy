@@ -5,6 +5,8 @@ import math
 import re
 from typing import Dict, List, Optional, Tuple
 
+import numpy as np
+
 from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, InvocationContext, ModelResult, OutputField
 from .chemical_data import ELEMENT_ATOMIC_WEIGHTS
 from .repositories.reference_repository import RepositoryError, atomic_weights
@@ -489,3 +491,313 @@ class A007_OxygenReductantEquivalent(BaseModelTool):
             mode = "reduction"; per_c = 2 if product == "CO" else 4; carbon = eq/per_c; carbon_mass = carbon*weights["C"]; supplied = carbon*per_c
         else: mode, supplied = "neutral", 0.0
         return ModelResult(True, result={"mode": mode, "normalized_composition": parsed["normalized"], "electron_breakdown": breakdown, "net_electron_change_kmol": net, "electron_equivalents_kmol": eq, "oxygen_required_kmol": oxygen, "oxygen_required_mass_kg": oxygen_mass, "oxygen_supply_kmol": supply, "oxygen_supply_normal_volume_m3": volume, "carbon_equivalent_kmol": carbon, "carbon_equivalent_mass_kg": carbon_mass, "reductant_product": product, "electron_balance_residual_kmol": eq-supplied}, provenance=provenance)
+
+
+class A101_ChargeValenceBalance(BaseModelTool):
+    """Catalog A007; A101 avoids colliding with the legacy runtime A007."""
+
+    model_id, name, scenario, priority = "A101", "电荷与价态平衡", SCENARIO, "P0"
+    version, status, qualification_status, count_eligible = "1.0.0", "qualified", "qualified", True
+    tool_name = "metallurgy_check_charge_valence_balance"
+    description = "根据化学式计量数和显式氧化态计算每化学式单元净电荷，校验电中性或指定离子电荷；混合价态必须拆分位点。"
+    applicable_boundary = "适用于A002可解析的无机化学式；不从晶体结构猜测价态，也不自动求解欠定混合价态。"
+    data_source = ["IUPAC Gold Book: oxidation state", "IUPAC Gold Book: electroneutrality"]
+    source_version = "IUPAC Gold Book online definitions; charge-balance-v1"
+    formula_reference = "q=sum_i(n_i*z_i); residual=q-target_charge"
+    source_records = [
+        {"source_id": "IUPAC-OS", "name": "IUPAC oxidation state definition", "version": "online", "url": "https://goldbook.iupac.org/terms/view/O04365"},
+        {"source_id": "IUPAC-ELECTRONEUTRALITY", "name": "IUPAC electroneutrality principle", "version": "online", "url": "https://goldbook.iupac.org/terms/view/E01992/plain"},
+    ]
+    failure_modes = ["价态映射未覆盖全部元素或包含多余元素", "混合价态位点计量数与化学式不一致", "价态或目标电荷不是有限数值", "化学式超出A002语法"]
+    independent_validation = ["总电荷等于计量数与氧化态乘积之和", "位点重排不改变总电荷", "化学式计量和目标电荷同比缩放时残差同比缩放"]
+    dependencies = ["A002"]
+    relations = [
+        _relation("depends_on", "A002", "复用相同化学式解析语法和元素计量数"),
+        _relation("complements", "A006", "分别校验物种电荷与反应元素守恒"),
+        _relation("upstream_of", "A007", "价态校验可先于氧/还原剂电子当量计算"),
+    ]
+    input_fields = [
+        InputField("formula", "化学式", "string", placeholder="如 Al2O3 或 SO4", description="不含离子上标；目标电荷单独给出"),
+        InputField("oxidation_states", "氧化态映射", "object", unit="1", description="元素到氧化态数值，或[{oxidation_state,count}]混合价态位点列表"),
+        InputField("target_charge", "目标电荷", "number", required=False, default=0.0, unit="e/formula_unit", description="中性物质为0，阴离子为负"),
+        InputField("tolerance", "电荷残差容差", "number", required=False, default=1e-12, unit="e/formula_unit", min_value=0.0),
+    ]
+    output_fields = [
+        OutputField("formula", "化学式", "string"),
+        OutputField("element_counts", "元素计量数", "object"),
+        OutputField("oxidation_state_assignments", "规范化价态位点", "object"),
+        OutputField("charge_contributions", "逐元素电荷贡献", "object"),
+        OutputField("calculated_charge", "计算电荷", "number", "e/formula_unit"),
+        OutputField("target_charge", "目标电荷", "number", "e/formula_unit"),
+        OutputField("charge_residual", "电荷残差", "number", "e/formula_unit"),
+        OutputField("balanced", "是否满足目标电荷", "boolean"),
+        OutputField("mixed_valence", "是否含混合价态", "boolean"),
+        OutputField("tolerance", "判定容差", "number", "e/formula_unit"),
+    ]
+    validation_rules = [
+        {"rule": "A002_formula", "field": "formula"},
+        {"rule": "complete_oxidation_state_mapping", "field": "oxidation_states"},
+        {"rule": "site_counts_match_formula", "field": "oxidation_states"},
+    ]
+    qualification_cases = [
+        {"id": "A101-N1", "kind": "normal", "input": {"formula": "NaCl", "oxidation_states": {"Na": 1, "Cl": -1}}},
+        {"id": "A101-N2", "kind": "normal", "input": {"formula": "Al2O3", "oxidation_states": {"Al": 3, "O": -2}}},
+        {"id": "A101-N3", "kind": "normal", "input": {"formula": "SO4", "oxidation_states": {"S": 6, "O": -2}, "target_charge": -2}},
+        {"id": "A101-B1", "kind": "boundary", "input": {"formula": "FeO", "oxidation_states": {"Fe": 3, "O": -2}}},
+        {"id": "A101-F1", "kind": "failure", "input": {"formula": "Fe3O4", "oxidation_states": {"Fe": [{"oxidation_state": 2, "count": 1}], "O": -2}}},
+    ]
+
+    @staticmethod
+    def _assignments(element: str, formula_count: float, raw_value):
+        values = raw_value if isinstance(raw_value, list) else [
+            {"oxidation_state": raw_value, "count": formula_count}
+        ]
+        if not values:
+            return None, f"{element}价态位点不能为空"
+        parsed, count_sum = [], 0.0
+        for index, item in enumerate(values):
+            if not isinstance(item, dict):
+                return None, f"{element}混合价态位点[{index}]必须是对象"
+            try:
+                state = float(item["oxidation_state"])
+                count = float(item["count"])
+            except (KeyError, TypeError, ValueError):
+                return None, f"{element}混合价态位点必须包含数值oxidation_state和count"
+            if not math.isfinite(state) or not math.isfinite(count) or count <= 0:
+                return None, f"{element}价态必须有限且位点计量数必须大于0"
+            if not -8 <= state <= 8:
+                return None, f"{element}氧化态{state:g}超出本工具[-8,8]适用域"
+            parsed.append({"oxidation_state": state, "count": count})
+            count_sum += count
+        if not math.isclose(count_sum, formula_count, rel_tol=0.0, abs_tol=1e-12):
+            return None, f"{element}位点计量数之和{count_sum:g}与化学式计量数{formula_count:g}不一致"
+        return parsed, None
+
+    def invoke(self, params: dict, context: Optional[InvocationContext] = None) -> ModelResult:
+        details, error = parse_formula_details(params["formula"])
+        if error:
+            return ModelResult(False, error=error, error_code="INVALID_INPUT")
+        states = params["oxidation_states"]
+        elements = details["elements"]
+        if not isinstance(states, dict) or set(states) != set(elements):
+            return ModelResult(False, error="氧化态映射必须恰好覆盖化学式中的全部元素", error_code="INVALID_INPUT")
+        assignments, contributions = {}, {}
+        calculated_charge, mixed = 0.0, False
+        for element, formula_count in elements.items():
+            parsed, error = self._assignments(element, float(formula_count), states[element])
+            if error:
+                return ModelResult(False, error=error, error_code="INVALID_INPUT")
+            mixed = mixed or len(parsed) > 1
+            contribution = math.fsum(x["oxidation_state"] * x["count"] for x in parsed)
+            assignments[element] = parsed
+            contributions[element] = contribution
+            calculated_charge += contribution
+        target = float(params.get("target_charge", 0.0))
+        tolerance = float(params.get("tolerance", 1e-12))
+        residual = calculated_charge - target
+        balanced = abs(residual) <= tolerance
+        warnings = [] if balanced else [BoundaryWarning(
+            "oxidation_states", f"计算电荷{calculated_charge:g}与目标电荷{target:g}不一致"
+        )]
+        return ModelResult(
+            True,
+            result={
+                "formula": params["formula"],
+                "element_counts": elements,
+                "oxidation_state_assignments": assignments,
+                "charge_contributions": contributions,
+                "calculated_charge": calculated_charge,
+                "target_charge": target,
+                "charge_residual": residual,
+                "balanced": balanced,
+                "mixed_valence": mixed,
+                "tolerance": tolerance,
+            },
+            boundary_check=BoundaryCheck(balanced, warnings),
+        )
+
+
+class A008_MissingValueImputer(BaseModelTool):
+    model_id, name, scenario, priority = "A008", "缺失值处理", SCENARIO, "P0"
+    version, status, qualification_status, count_eligible = "1.0.0", "qualified", "qualified", True
+    tool_name = "metallurgy_impute_missing_values"
+    description = "对带列名和单位的数值表执行可复现的常数、均值、中位数、众数、线性插值或KNN填补，并保留原始缺失掩码。"
+    applicable_boundary = "仅处理二维数值表；观察值保持不变；v1不执行监督/生成式填补，也不允许把标签列隐式用于距离。"
+    data_source = ["scikit-learn imputation algorithm definitions", "NumPy deterministic implementation"]
+    source_version = "imputation-contract-v1; NumPy runtime"
+    formula_reference = "column statistics; piecewise linear interpolation; nan-aware Euclidean KNN with inverse-distance weighting"
+    source_records = [
+        {"source_id": "SKLEARN-IMPUTE", "name": "scikit-learn Imputation API reference", "version": "online", "url": "https://scikit-learn.org/stable/api/sklearn.impute.html"},
+        {"source_id": "NUMPY", "name": "NumPy numerical array algorithms", "version": np.__version__},
+    ]
+    failure_modes = ["二维数组为空或列数不一致", "列名/单位未完整声明", "整列缺失且方法无法形成统计量", "KNN没有具有共同观察特征的供体", "数据含非有限观察值"]
+    independent_validation = ["所有非缺失观察值逐位保持不变", "无缺失输入幂等", "均值/中位数结果可人工复算", "行顺序置换不改变KNN对应结果"]
+    dependencies = []
+    relations = [
+        _relation("complements", "A004", "分别处理缺失值和成分尺度归一化"),
+        _relation("upstream_of", "D021", "可作为显式记录的工艺数据预处理步骤，但D021不隐式调用"),
+    ]
+    input_fields = [
+        InputField("data", "数值数据矩阵", "array", items={"type": "array", "items": {"anyOf": [{"type": "number"}, {"type": "null"}]}}, description="行是样本，列是变量；缺失值用null"),
+        InputField("columns", "列名", "array", items={"type": "string"}, description="列名数量必须等于矩阵列数"),
+        InputField("column_units", "列单位", "object", description="每个列名到单位字符串的完整映射，无量纲写1"),
+        InputField("method", "填补方法", "select", enum=["constant", "mean", "median", "most_frequent", "linear", "knn"]),
+        InputField("constant_value", "常数填充值", "number", required=False, unit="$column_unit", description="method=constant时必填，按各列声明单位解释"),
+        InputField("n_neighbors", "KNN邻居数", "number", required=False, default=3, unit="count", min_value=1, description="method=knn时使用"),
+    ]
+    output_fields = [
+        OutputField("imputed_data", "填补后矩阵", "array"),
+        OutputField("missing_mask", "原始缺失掩码", "array"),
+        OutputField("columns", "列名", "array"),
+        OutputField("column_units", "列单位", "object"),
+        OutputField("method", "实际方法", "string"),
+        OutputField("statistics", "统计量或逐格KNN记录", "object"),
+        OutputField("imputed_count", "填补数量", "number", "count"),
+        OutputField("remaining_missing_count", "剩余缺失数量", "number", "count"),
+        OutputField("warnings", "质量警告", "array"),
+    ]
+    validation_rules = [
+        {"rule": "rectangular_numeric_matrix", "field": "data"},
+        {"rule": "columns_and_units_complete", "fields": ["columns", "column_units"]},
+        {"rule": "observed_values_immutable", "field": "data"},
+    ]
+    qualification_cases = [
+        {"id": "A008-N1", "kind": "normal", "input": {"data": [[1, 10], [None, 20], [3, 30]], "columns": ["x", "y"], "column_units": {"x": "1", "y": "K"}, "method": "mean"}},
+        {"id": "A008-N2", "kind": "normal", "input": {"data": [[0, 10], [1, None], [2, 30]], "columns": ["time", "value"], "column_units": {"time": "s", "value": "K"}, "method": "linear"}},
+        {"id": "A008-N3", "kind": "normal", "input": {"data": [[0, 0], [1, 1], [1.1, None], [10, 10]], "columns": ["x", "y"], "column_units": {"x": "1", "y": "1"}, "method": "knn", "n_neighbors": 1}},
+        {"id": "A008-B1", "kind": "boundary", "input": {"data": [[1, 2], [3, 4]], "columns": ["x", "y"], "column_units": {"x": "1", "y": "1"}, "method": "median"}},
+        {"id": "A008-F1", "kind": "failure", "input": {"data": [[None, 1], [None, 2]], "columns": ["x", "y"], "column_units": {"x": "1", "y": "1"}, "method": "mean"}},
+    ]
+
+    @staticmethod
+    def _matrix(params):
+        data = params["data"]
+        columns = params["columns"]
+        units = params["column_units"]
+        if not isinstance(data, list) or not data or not all(isinstance(row, list) for row in data):
+            return None, None, "data必须是非空二维数组"
+        width = len(data[0])
+        if width == 0 or any(len(row) != width for row in data):
+            return None, None, "data每行列数必须一致且大于0"
+        if not isinstance(columns, list) or len(columns) != width or any(not isinstance(x, str) or not x.strip() for x in columns) or len(set(columns)) != width:
+            return None, None, "columns必须是与矩阵列数一致的唯一非空字符串"
+        if not isinstance(units, dict) or set(units) != set(columns) or any(not isinstance(x, str) or not x.strip() for x in units.values()):
+            return None, None, "column_units必须恰好覆盖全部列且值为非空单位字符串"
+        matrix = np.empty((len(data), width), dtype=float)
+        for row_index, row in enumerate(data):
+            for column_index, value in enumerate(row):
+                if value is None:
+                    matrix[row_index, column_index] = np.nan
+                    continue
+                if isinstance(value, bool):
+                    return None, None, f"data[{row_index}][{column_index}]必须是数值或null"
+                try:
+                    numeric = float(value)
+                except (TypeError, ValueError):
+                    return None, None, f"data[{row_index}][{column_index}]必须是数值或null"
+                if not math.isfinite(numeric):
+                    return None, None, f"data[{row_index}][{column_index}]观察值必须有限"
+                matrix[row_index, column_index] = numeric
+        return matrix, columns, None
+
+    @staticmethod
+    def _knn_impute(matrix: np.ndarray, neighbors: int):
+        original = matrix.copy()
+        output = matrix.copy()
+        records = {}
+        row_count, column_count = original.shape
+        for row_index, column_index in zip(*np.where(np.isnan(original))):
+            candidates = []
+            for donor in range(row_count):
+                if donor == row_index or np.isnan(original[donor, column_index]):
+                    continue
+                feature_mask = ~np.isnan(original[row_index]) & ~np.isnan(original[donor])
+                feature_mask[column_index] = False
+                common = int(feature_mask.sum())
+                if common == 0:
+                    continue
+                delta = original[row_index, feature_mask] - original[donor, feature_mask]
+                distance = float(math.sqrt(float(np.dot(delta, delta)) * max(column_count - 1, 1) / common))
+                candidates.append((distance, donor, float(original[donor, column_index])))
+            if not candidates:
+                return None, None, f"data[{row_index}][{column_index}]没有具备共同观察特征的KNN供体"
+            selected = sorted(candidates, key=lambda x: (x[0], x[1]))[:neighbors]
+            zero = [item for item in selected if item[0] <= 1e-15]
+            if zero:
+                value = math.fsum(item[2] for item in zero) / len(zero)
+            else:
+                weights = [1.0 / item[0] for item in selected]
+                value = math.fsum(weight * item[2] for weight, item in zip(weights, selected)) / math.fsum(weights)
+            output[row_index, column_index] = value
+            records[f"{row_index},{column_index}"] = {
+                "donor_rows": [item[1] for item in selected],
+                "distances": [item[0] for item in selected],
+                "value": value,
+            }
+        return output, records, None
+
+    def invoke(self, params: dict, context: Optional[InvocationContext] = None) -> ModelResult:
+        matrix, columns, error = self._matrix(params)
+        if error:
+            return ModelResult(False, error=error, error_code="INVALID_INPUT")
+        mask = np.isnan(matrix)
+        missing_count = int(mask.sum())
+        method = params["method"]
+        output = matrix.copy()
+        statistics = {}
+        warnings = []
+        if missing_count == 0:
+            warnings.append("输入不含缺失值，未执行填补")
+        elif method == "constant":
+            if "constant_value" not in params:
+                return ModelResult(False, error="method=constant时必须提供constant_value", error_code="INVALID_INPUT")
+            value = float(params["constant_value"])
+            output[mask] = value
+            statistics = {column: {"fill_value": value} for column in columns}
+        elif method in {"mean", "median", "most_frequent"}:
+            for index, column in enumerate(columns):
+                observed = matrix[~mask[:, index], index]
+                if observed.size == 0:
+                    return ModelResult(False, error=f"列{column}全部缺失，无法计算{method}统计量", error_code="OUT_OF_DOMAIN")
+                if method == "mean":
+                    value = float(np.mean(observed))
+                elif method == "median":
+                    value = float(np.median(observed))
+                else:
+                    values, counts = np.unique(observed, return_counts=True)
+                    value = float(values[int(np.argmax(counts))])
+                output[mask[:, index], index] = value
+                statistics[column] = {"fill_value": value, "observed_count": int(observed.size)}
+        elif method == "linear":
+            row_axis = np.arange(matrix.shape[0], dtype=float)
+            for index, column in enumerate(columns):
+                observed_mask = ~mask[:, index]
+                if int(observed_mask.sum()) < 2:
+                    return ModelResult(False, error=f"列{column}至少需要2个观察值才能线性插值", error_code="OUT_OF_DOMAIN")
+                output[:, index] = np.interp(row_axis, row_axis[observed_mask], matrix[observed_mask, index])
+                statistics[column] = {"observed_rows": np.where(observed_mask)[0].tolist()}
+        else:
+            neighbors = int(float(params.get("n_neighbors", 3)))
+            if not math.isclose(float(params.get("n_neighbors", 3)), neighbors):
+                return ModelResult(False, error="n_neighbors必须是整数", error_code="INVALID_INPUT")
+            output, records, error = self._knn_impute(matrix, neighbors)
+            if error:
+                return ModelResult(False, error=error, error_code="OUT_OF_DOMAIN")
+            statistics = {"cells": records, "n_neighbors": neighbors}
+        remaining = int(np.isnan(output).sum())
+        boundary_warnings = [BoundaryWarning("data", message) for message in warnings]
+        return ModelResult(
+            True,
+            result={
+                "imputed_data": output.tolist(),
+                "missing_mask": mask.tolist(),
+                "columns": columns,
+                "column_units": params["column_units"],
+                "method": method,
+                "statistics": statistics,
+                "imputed_count": missing_count - remaining,
+                "remaining_missing_count": remaining,
+                "warnings": warnings,
+            },
+            boundary_check=BoundaryCheck(not warnings, boundary_warnings),
+        )

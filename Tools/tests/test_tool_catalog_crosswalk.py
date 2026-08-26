@@ -15,7 +15,7 @@ from models_core import ModelRegistry
 
 
 CROSSWALK_PATH = os.path.join(
-    TOOLS_DIR, "models_core", "data", "tool_catalog_crosswalk_v1.json"
+    TOOLS_DIR, "models_core", "data", "tool_catalog_crosswalk_v2.json"
 )
 
 
@@ -30,7 +30,7 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
     def test_all_current_runtime_assets_are_preserved_once(self):
         mapped = [entry["runtime_model_code"] for entry in self.crosswalk["entries"]]
         registered = [entry["model_code"] for entry in self.registry.list_models()]
-        self.assertEqual(len(mapped), 30)
+        self.assertEqual(len(mapped), 34)
         self.assertEqual(len(mapped), len(set(mapped)))
         self.assertEqual(set(mapped), set(registered))
 
@@ -68,8 +68,8 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
 
     def test_registry_exposes_dual_identity_and_dual_counts(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["runtime_tool_count"], 30)
-        self.assertEqual(counts["catalog_coverage_count"], 26)
+        self.assertEqual(counts["runtime_tool_count"], 34)
+        self.assertEqual(counts["catalog_coverage_count"], 30)
 
         oxygen = self.registry.get("A007")
         self.assertEqual(oxygen.catalog_id, "A006")
@@ -94,6 +94,13 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
         self.assertIsNone(
             self.registry.get_by_catalog_id("C003", fully_eligible_only=False)
         )
+
+        charge = self.registry.get_by_catalog_id("A007", fully_eligible_only=False)
+        self.assertEqual(charge.model_id, "A101")
+        self.assertEqual(charge.tool_name, "metallurgy_check_charge_valence_balance")
+        bof_balance = self.registry.get_by_catalog_id("D001", fully_eligible_only=False)
+        self.assertEqual(bof_balance.model_id, "D021")
+        self.assertEqual(bof_balance.tool_name, "metallurgy_balance_bof_charge")
 
     def test_llm_definition_contains_catalog_identity(self):
         definition = self.registry.get("A001").get_tool_definition(

@@ -7,6 +7,7 @@ can replace them without changing the tool contract.
 from __future__ import annotations
 
 import math
+import re
 
 from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, ModelResult, OutputField
 from .repositories.reference_repository import RepositoryError, atomic_weights, process_parameters
@@ -36,6 +37,18 @@ class ProcessTool(BaseModelTool):
     source_version = "BOF-STATIC-BALANCE-2026.08-v1"
     source_records = [{"source_id":"BOF-STATIC-BALANCE-V1","name":"BOF stoichiometric material and energy balance assumptions","version":"2026.08-v1"}]
     data_source = ["氧化还原计量与透明静态能量守恒参数集"]
+
+
+class FormulaProcessTool(BaseModelTool):
+    """Explicit-input process balances that do not use hidden plant defaults."""
+
+    data_requirement = "FORMULA_ONLY"
+    data_access_mode = "none"
+    scenario = "冶金工艺、物料与热平衡"
+    priority = "P0"
+    status = "qualified"
+    qualification_status = "qualified"
+    count_eligible = True
 
 
 class D001_BOFOxygenDemand(ProcessTool):
@@ -224,3 +237,353 @@ class D002_BOFStaticHeatBalance(ProcessTool):
             temperature=(low+high)/2; fraction=1.0 if temperature>=melting else 0.0; final=final_energy(temperature)
         closure=initial-final; fully=bool(scrap_mass==0 or (temperature>=melting and fraction>=1-1e-12))
         return ModelResult(True,result={"solve_for":mode,"final_temperature_k":temperature,"maximum_meltable_scrap_kg":scrap_mass,"actual_scrap_mass_kg":scrap_mass,"scrap_melt_fraction":fraction,"fully_molten":fully,"initial_energy_kj":initial,"reaction_heat_kj":reaction,"other_heat_input_kj":other,"heat_loss_kj":loss,"final_energy_kj":final,"energy_closure_error_kj":closure,"target_temperature_k":temperature,"assumptions":assumptions},provenance=provenance)
+
+
+class D021_BOFChargeBalance(FormulaProcessTool):
+    """Catalog D001; D021 avoids colliding with legacy runtime D001."""
+
+    model_id, name, version = "D021", "转炉装料物料平衡", "1.0.0"
+    tool_name = "metallurgy_balance_bof_charge"
+    description = "在统一炉次或吨钢基准下审计BOF输入/输出总质量和逐元素闭合，或用一个指定元素求解唯一未知输出物流质量。"
+    applicable_boundary = "零维静态完全混合；所有物流成分、路由和收得结果必须显式输入；最多求解一个未知输出质量，不用于在线配料控制。"
+    data_source = ["Conservation of mass and chemical elements", "EU Iron and Steel BREF process boundaries"]
+    source_version = "bof-charge-balance-v1; EU Iron and Steel BREF process-boundary reference"
+    formula_reference = "r_m=sum(m_in)-sum(m_out); r_e=sum(m_in*w_e)-sum(m_out*w_e); m_unknown=(E_in-E_known_out)/w_unknown"
+    source_records = [
+        {"source_id": "MASS-CONSERVATION", "name": "Conservation of mass and chemical elements", "version": "v1"},
+        {"source_id": "EU-IRON-STEEL-BREF", "name": "EU Iron and Steel Production BREF", "version": "2013", "url": "https://eippcb.jrc.ec.europa.eu/reference/iron-and-steel-production"},
+    ]
+    failure_modes = ["物流质量为负或组成不闭合", "统计基准缺失或混用", "多于一个未知物流导致欠定", "求解元素在未知物流中含量为零", "约束产生负质量解"]
+    independent_validation = ["总质量及逐元素残差按输入减输出直接复算", "所有物流同比缩放时闭合率不变", "物流拆分合并不改变元素残差", "单未知解代回指定元素方程残差为零"]
+    dependencies = ["A004", "A005"]
+    relations = [
+        rel("depends_on", "A004", "每个物流的质量分数组成遵循相同非负归一化约束"),
+        rel("overlaps", "A005", "A005是通用校验原子工具，本工具增加BOF物流类别、钢水收得率和单未知求解"),
+        rel("complements", "D001", "现有D001只计算目录D003理论耗氧，本工具计算全装料静态闭合"),
+        rel("upstream_of", "D002", "闭合后的装料质量可进入BOF静态热平衡"),
+        rel("overlaps", "D004", "D004求熔剂子问题，本工具接收其熔剂物流结果"),
+    ]
+    input_fields = [
+        InputField("basis", "统计基准", "select", enum=["per_heat", "per_t_steel", "per_hour"], description="所有质量都按同一基准给出"),
+        InputField("input_streams", "输入物流", "array", items={"type": "object"}, description="[{name,category,mass_kg,composition:{element:fraction}}]"),
+        InputField("output_streams", "输出物流", "array", items={"type": "object"}, description="同输入结构；单未知求解时目标物流可省略mass_kg"),
+        InputField("solve_stream_name", "待求输出物流名", "string", required=False, description="省略表示仅审计；给出时必须只有该输出物流缺mass_kg"),
+        InputField("solve_element", "求解约束元素", "string", required=False, description="单未知求解时必填，且该元素在待求物流中质量分数大于0"),
+        InputField("absolute_tolerance_kg", "绝对闭合容差", "number", required=False, default=1e-6, unit="kg/$basis", min_value=0),
+        InputField("relative_tolerance", "相对闭合容差", "number", required=False, default=1e-8, unit="1", min_value=0, max_value=1),
+    ]
+    output_fields = [
+        OutputField("basis", "统计基准", "string"),
+        OutputField("mode", "执行模式", "string"),
+        OutputField("stream_summary", "规范化物流", "object"),
+        OutputField("element_balances", "逐元素平衡", "object"),
+        OutputField("total_input_mass_kg", "总输入质量", "number", "kg/$basis"),
+        OutputField("total_output_mass_kg", "总输出质量", "number", "kg/$basis"),
+        OutputField("mass_residual_kg", "总质量残差", "number", "kg/$basis"),
+        OutputField("mass_closure_rate", "总质量闭合率", "number", "1"),
+        OutputField("max_element_residual_kg", "最大元素残差", "number", "kg/$basis"),
+        OutputField("metallic_charge_mass_kg", "金属装料质量", "number", "kg/$basis"),
+        OutputField("target_steel_mass_kg", "钢水质量", "number", "kg/$basis"),
+        OutputField("steel_yield", "金属装料钢水收得率", "number", "1"),
+        OutputField("solved_stream", "求解物流信息", "object"),
+        OutputField("passed", "是否闭合", "boolean"),
+    ]
+    validation_rules = [
+        {"rule": "single_common_basis", "field": "basis"},
+        {"rule": "nonnegative_mass_fraction_streams", "fields": ["input_streams", "output_streams"]},
+        {"rule": "at_most_one_unknown_output", "field": "output_streams"},
+    ]
+    qualification_cases = [
+        {"id": "D021-N1", "kind": "normal", "input": {"basis": "per_heat", "input_streams": [{"name": "hot_metal", "category": "hot_metal", "mass_kg": 100, "composition": {"Fe": 0.96, "C": 0.04}}], "output_streams": [{"name": "steel", "category": "steel", "mass_kg": 96, "composition": {"Fe": 1}}, {"name": "offgas_carbon", "category": "offgas", "mass_kg": 4, "composition": {"C": 1}}]}},
+        {"id": "D021-N2", "kind": "normal", "input": {"basis": "per_t_steel", "input_streams": [{"name": "iron", "category": "metal_addition", "mass_kg": 60, "composition": {"Fe": 1}}, {"name": "carbon", "category": "other", "mass_kg": 40, "composition": {"C": 1}}], "output_streams": [{"name": "product", "category": "steel", "mass_kg": 100, "composition": {"Fe": 0.6, "C": 0.4}}]}},
+        {"id": "D021-N3", "kind": "normal", "input": {"basis": "per_heat", "input_streams": [{"name": "iron", "category": "hot_metal", "mass_kg": 100, "composition": {"Fe": 1}}], "output_streams": [{"name": "steel", "category": "steel", "composition": {"Fe": 1}}], "solve_stream_name": "steel", "solve_element": "Fe"}},
+        {"id": "D021-B1", "kind": "boundary", "input": {"basis": "per_heat", "input_streams": [{"name": "iron", "category": "hot_metal", "mass_kg": 100, "composition": {"Fe": 1}}], "output_streams": [{"name": "steel", "category": "steel", "mass_kg": 90, "composition": {"Fe": 1}}]}},
+        {"id": "D021-F1", "kind": "failure", "input": {"basis": "per_heat", "input_streams": [{"name": "iron", "category": "hot_metal", "mass_kg": 100, "composition": {"Fe": 1}}], "output_streams": [{"name": "known", "category": "steel", "mass_kg": 110, "composition": {"Fe": 1}}, {"name": "unknown", "category": "dust", "composition": {"Fe": 1}}], "solve_stream_name": "unknown", "solve_element": "Fe"}},
+    ]
+
+    _INPUT_CATEGORIES = {"hot_metal", "scrap", "metal_addition", "flux", "oxygen", "other"}
+    _OUTPUT_CATEGORIES = {"steel", "slag", "offgas", "dust", "splash", "other"}
+
+    @staticmethod
+    def _composition(raw, label):
+        if not isinstance(raw, dict) or not raw:
+            return None, f"{label}必须是非空对象"
+        parsed = {}
+        for element, raw_fraction in raw.items():
+            if not isinstance(element, str) or not re.fullmatch(r"[A-Z][a-z]?", element):
+                return None, f"{label}包含非法元素符号 {element}"
+            if isinstance(raw_fraction, bool):
+                return None, f"{label}.{element}必须是数值"
+            try:
+                fraction = float(raw_fraction)
+            except (TypeError, ValueError):
+                return None, f"{label}.{element}必须是数值"
+            if not math.isfinite(fraction) or not 0 <= fraction <= 1:
+                return None, f"{label}.{element}必须在[0,1]"
+            parsed[element] = fraction
+        if math.fsum(parsed.values()) > 1 + 1e-12:
+            return None, f"{label}质量分数之和不能超过1"
+        return parsed, None
+
+    def _streams(self, raw, direction, allow_unknown=False):
+        if not isinstance(raw, list) or not raw:
+            return None, f"{direction}_streams必须是非空数组"
+        categories = self._INPUT_CATEGORIES if direction == "input" else self._OUTPUT_CATEGORIES
+        parsed, names = [], set()
+        for index, stream in enumerate(raw):
+            if not isinstance(stream, dict):
+                return None, f"{direction}_streams[{index}]必须是对象"
+            name, category = stream.get("name"), stream.get("category")
+            if not isinstance(name, str) or not name.strip() or name in names:
+                return None, f"{direction}_streams[{index}].name必须是唯一非空字符串"
+            if category not in categories:
+                return None, f"{direction}_streams[{index}].category不受支持"
+            names.add(name)
+            composition, error = self._composition(stream.get("composition"), f"{direction}_streams[{index}].composition")
+            if error:
+                return None, error
+            mass = stream.get("mass_kg")
+            if mass is None and allow_unknown:
+                parsed.append({"name": name, "category": category, "mass_kg": None, "composition": composition})
+                continue
+            if isinstance(mass, bool):
+                return None, f"{direction}_streams[{index}].mass_kg必须是数值"
+            try:
+                mass = float(mass)
+            except (TypeError, ValueError):
+                return None, f"{direction}_streams[{index}].mass_kg必须是数值"
+            if not math.isfinite(mass) or mass < 0:
+                return None, f"{direction}_streams[{index}].mass_kg必须是非负有限数值"
+            parsed.append({"name": name, "category": category, "mass_kg": mass, "composition": composition})
+        return parsed, None
+
+    @staticmethod
+    def _element_totals(streams):
+        totals = {}
+        for stream in streams:
+            for element, fraction in stream["composition"].items():
+                totals[element] = totals.get(element, 0.0) + stream["mass_kg"] * fraction
+        return totals
+
+    def invoke(self, params, context=None):
+        inputs, error = self._streams(params["input_streams"], "input")
+        if error:
+            return fail(error)
+        solve_name = params.get("solve_stream_name")
+        outputs, error = self._streams(params["output_streams"], "output", allow_unknown=bool(solve_name))
+        if error:
+            return fail(error)
+        unknowns = [stream for stream in outputs if stream["mass_kg"] is None]
+        solved_stream = {}
+        if solve_name:
+            if len(unknowns) != 1 or unknowns[0]["name"] != solve_name:
+                return fail("单未知模式必须且只能有solve_stream_name指定的一个输出物流缺少mass_kg")
+            solve_element = params.get("solve_element")
+            if not isinstance(solve_element, str) or not re.fullmatch(r"[A-Z][a-z]?", solve_element):
+                return fail("单未知模式必须提供合法solve_element")
+            fraction = unknowns[0]["composition"].get(solve_element, 0.0)
+            if fraction <= 0:
+                return fail("待求物流中solve_element质量分数必须大于0")
+            input_element = self._element_totals(inputs).get(solve_element, 0.0)
+            known_output_element = self._element_totals([x for x in outputs if x["mass_kg"] is not None]).get(solve_element, 0.0)
+            solved_mass = (input_element - known_output_element) / fraction
+            if solved_mass < -1e-12:
+                return fail("指定元素约束产生负质量解", "OUT_OF_DOMAIN")
+            unknowns[0]["mass_kg"] = max(0.0, solved_mass)
+            solved_stream = {"name": solve_name, "solve_element": solve_element, "mass_kg": unknowns[0]["mass_kg"]}
+            mode = "single_unknown_mass"
+        else:
+            if unknowns:
+                return fail("审计模式下所有输出物流必须提供mass_kg")
+            if params.get("solve_element"):
+                return fail("未指定solve_stream_name时不得单独提供solve_element")
+            mode = "audit"
+        total_input = math.fsum(x["mass_kg"] for x in inputs)
+        total_output = math.fsum(x["mass_kg"] for x in outputs)
+        input_elements = self._element_totals(inputs)
+        output_elements = self._element_totals(outputs)
+        absolute = float(params.get("absolute_tolerance_kg", 1e-6))
+        relative = float(params.get("relative_tolerance", 1e-8))
+        element_balances = {}
+        for element in sorted(set(input_elements) | set(output_elements)):
+            incoming, outgoing = input_elements.get(element, 0.0), output_elements.get(element, 0.0)
+            residual = incoming - outgoing
+            tolerance = max(absolute, relative * max(incoming, outgoing, 1.0))
+            element_balances[element] = {"input_mass_kg": incoming, "output_mass_kg": outgoing, "residual_kg": residual, "closure_rate": 1.0 - abs(residual) / max(incoming, outgoing, 1.0), "passed": abs(residual) <= tolerance}
+        mass_residual = total_input - total_output
+        mass_tolerance = max(absolute, relative * max(total_input, total_output, 1.0))
+        passed = abs(mass_residual) <= mass_tolerance and all(x["passed"] for x in element_balances.values())
+        max_element = max((abs(x["residual_kg"]) for x in element_balances.values()), default=0.0)
+        metallic = math.fsum(x["mass_kg"] for x in inputs if x["category"] in {"hot_metal", "scrap", "metal_addition"})
+        steel = math.fsum(x["mass_kg"] for x in outputs if x["category"] == "steel")
+        yield_value = steel / metallic if metallic > 0 else 0.0
+        warnings = [] if passed else [BoundaryWarning("streams", "BOF装料总质量或逐元素平衡未在声明容差内闭合")]
+        return ModelResult(
+            True,
+            result={
+                "basis": params["basis"],
+                "mode": mode,
+                "stream_summary": {"inputs": inputs, "outputs": outputs},
+                "element_balances": element_balances,
+                "total_input_mass_kg": total_input,
+                "total_output_mass_kg": total_output,
+                "mass_residual_kg": mass_residual,
+                "mass_closure_rate": 1.0 - abs(mass_residual) / max(total_input, total_output, 1.0),
+                "max_element_residual_kg": max_element,
+                "metallic_charge_mass_kg": metallic,
+                "target_steel_mass_kg": steel,
+                "steel_yield": yield_value,
+                "solved_stream": solved_stream,
+                "passed": passed,
+            },
+            boundary_check=BoundaryCheck(passed, warnings),
+        )
+
+
+class D004_BOFFluxAddition(FormulaProcessTool):
+    model_id, name, version = "D004", "石灰/白云石加入量", "1.0.0"
+    tool_name = "metallurgy_calc_bof_flux_addition"
+    description = "根据现有渣源、石灰/白云石化验和利用率，联立目标CaO/SiO2碱度与MgO质量分数，求非负熔剂加入量。"
+    applicable_boundary = "静态完全混合且各氧化物按给定利用率进入渣相；不模拟溶解动力学、喷溅、挥发或分批加料。"
+    data_source = ["Oxide mass conservation", "CaO/SiO2 basicity definition"]
+    source_version = "bof-flux-linear-balance-v1"
+    formula_reference = "CaO_f-B*SiO2_f=0; MgO_f-f_MgO*m_slag,f=0; solve 2x2 nonnegative system"
+    source_records = [
+        {"source_id": "OXIDE-MASS-BALANCE", "name": "Oxide mass conservation and binary basicity definition", "version": "v1"},
+        {"source_id": "EU-IRON-STEEL-BREF", "name": "EU Iron and Steel Production BREF process boundary", "version": "2013", "url": "https://eippcb.jrc.ec.europa.eu/reference/iron-and-steel-production"},
+    ]
+    failure_modes = ["氧化物质量或化验为负", "化验质量分数不闭合", "约束矩阵奇异", "目标不可达并产生负加入量", "最终SiO2或总渣量为零"]
+    independent_validation = ["将加入量代回碱度与MgO方程残差为零", "现有渣与熔剂量同比缩放时目标组成不变", "零加入边界保持初始渣组成", "两种熔剂化验相同导致奇异系统并失败"]
+    dependencies = ["A004"]
+    relations = [
+        rel("depends_on", "A004", "熔剂化验遵循质量分数闭合约束"),
+        rel("overlaps", "D021", "本工具求解D021全炉物料平衡中的熔剂子问题"),
+        rel("upstream_of", "D002", "熔剂质量和预计渣量可进入热平衡"),
+    ]
+    input_fields = [
+        InputField("existing_oxide_masses_kg", "现有渣源氧化物质量", "object", unit="kg/$basis", description="必须包含CaO、SiO2、MgO，可含其他氧化物"),
+        InputField("lime_assay", "石灰化验", "object", unit="1", description="氧化物质量分数，和必须为1"),
+        InputField("dolomite_assay", "白云石化验", "object", unit="1", description="氧化物质量分数，和必须为1"),
+        InputField("target_basicity", "目标二元碱度", "number", unit="1", min_value=1e-12, description="最终CaO/SiO2"),
+        InputField("target_mgo_fraction", "目标MgO质量分数", "number", unit="1", min_value=0, max_value=0.5),
+        InputField("lime_utilization", "石灰入渣利用率", "number", required=False, default=1.0, unit="1", min_value=1e-12, max_value=1),
+        InputField("dolomite_utilization", "白云石入渣利用率", "number", required=False, default=1.0, unit="1", min_value=1e-12, max_value=1),
+        InputField("basis", "统计基准", "select", required=False, default="per_heat", enum=["per_heat", "per_t_steel"]),
+    ]
+    output_fields = [
+        OutputField("basis", "统计基准", "string"),
+        OutputField("lime_addition_kg", "石灰加入量", "number", "kg/$basis"),
+        OutputField("dolomite_addition_kg", "白云石加入量", "number", "kg/$basis"),
+        OutputField("predicted_oxide_masses_kg", "预计渣中氧化物质量", "object"),
+        OutputField("predicted_slag_mass_kg", "预计渣量", "number", "kg/$basis"),
+        OutputField("achieved_basicity", "实际二元碱度", "number", "1"),
+        OutputField("achieved_mgo_fraction", "实际MgO质量分数", "number", "1"),
+        OutputField("basicity_residual", "碱度残差", "number", "1"),
+        OutputField("mgo_fraction_residual", "MgO分数残差", "number", "1"),
+        OutputField("constraint_determinant", "约束矩阵行列式", "number", "1"),
+        OutputField("passed", "约束是否闭合", "boolean"),
+    ]
+    validation_rules = [
+        {"rule": "nonnegative_oxide_masses", "field": "existing_oxide_masses_kg"},
+        {"rule": "closed_assay", "fields": ["lime_assay", "dolomite_assay"]},
+        {"rule": "nonnegative_unique_solution", "fields": ["target_basicity", "target_mgo_fraction"]},
+    ]
+    qualification_cases = [
+        {"id": "D004-N1", "kind": "normal", "input": {"existing_oxide_masses_kg": {"CaO": 10, "SiO2": 20, "MgO": 1, "Other": 9}, "lime_assay": {"CaO": 0.9, "SiO2": 0.05, "MgO": 0.02, "Other": 0.03}, "dolomite_assay": {"CaO": 0.55, "SiO2": 0.05, "MgO": 0.35, "Other": 0.05}, "target_basicity": 1.0481927710843373, "target_mgo_fraction": 0.053636363636363635}},
+        {"id": "D004-N2", "kind": "normal", "input": {"existing_oxide_masses_kg": {"CaO": 5, "SiO2": 15, "MgO": 0.5, "Other": 4.5}, "lime_assay": {"CaO": 0.9, "SiO2": 0.05, "MgO": 0.02, "Other": 0.03}, "dolomite_assay": {"CaO": 0.55, "SiO2": 0.05, "MgO": 0.35, "Other": 0.05}, "target_basicity": 1.7272727272727273, "target_mgo_fraction": 0.08}},
+        {"id": "D004-N3", "kind": "normal", "input": {"existing_oxide_masses_kg": {"CaO": 5, "SiO2": 10, "MgO": 1, "Other": 14}, "lime_assay": {"CaO": 0.9, "SiO2": 0.05, "MgO": 0.02, "Other": 0.03}, "dolomite_assay": {"CaO": 0.55, "SiO2": 0.05, "MgO": 0.35, "Other": 0.05}, "target_basicity": 1.5806451612903225, "target_mgo_fraction": 0.09170212765957447, "lime_utilization": 0.8, "dolomite_utilization": 0.9}},
+        {"id": "D004-B1", "kind": "boundary", "input": {"existing_oxide_masses_kg": {"CaO": 20, "SiO2": 10, "MgO": 2, "Other": 8}, "lime_assay": {"CaO": 0.9, "SiO2": 0.05, "MgO": 0.02, "Other": 0.03}, "dolomite_assay": {"CaO": 0.55, "SiO2": 0.05, "MgO": 0.35, "Other": 0.05}, "target_basicity": 2, "target_mgo_fraction": 0.05}},
+        {"id": "D004-F1", "kind": "failure", "input": {"existing_oxide_masses_kg": {"CaO": 10, "SiO2": 20, "MgO": 1, "Other": 9}, "lime_assay": {"CaO": 0.8, "SiO2": 0.1, "MgO": 0.05, "Other": 0.05}, "dolomite_assay": {"CaO": 0.8, "SiO2": 0.1, "MgO": 0.05, "Other": 0.05}, "target_basicity": 2, "target_mgo_fraction": 0.08}},
+    ]
+
+    @staticmethod
+    def _oxide_mapping(raw, label, require_closed):
+        if not isinstance(raw, dict) or not raw:
+            return None, f"{label}必须是非空对象"
+        parsed = {}
+        for oxide, raw_value in raw.items():
+            if not isinstance(oxide, str) or not oxide.strip():
+                return None, f"{label}氧化物名称必须是非空字符串"
+            if isinstance(raw_value, bool):
+                return None, f"{label}.{oxide}必须是数值"
+            try:
+                value = float(raw_value)
+            except (TypeError, ValueError):
+                return None, f"{label}.{oxide}必须是数值"
+            if not math.isfinite(value) or value < 0:
+                return None, f"{label}.{oxide}必须是非负有限数值"
+            parsed[oxide] = value
+        if require_closed and not math.isclose(math.fsum(parsed.values()), 1.0, rel_tol=0.0, abs_tol=1e-9):
+            return None, f"{label}质量分数之和必须为1"
+        for required in ("CaO", "SiO2", "MgO"):
+            if required not in parsed:
+                return None, f"{label}必须包含{required}"
+        return parsed, None
+
+    def invoke(self, params, context=None):
+        existing, error = self._oxide_mapping(params["existing_oxide_masses_kg"], "existing_oxide_masses_kg", False)
+        if error:
+            return fail(error)
+        lime, error = self._oxide_mapping(params["lime_assay"], "lime_assay", True)
+        if error:
+            return fail(error)
+        dolomite, error = self._oxide_mapping(params["dolomite_assay"], "dolomite_assay", True)
+        if error:
+            return fail(error)
+        basicity = float(params["target_basicity"])
+        mgo_fraction = float(params["target_mgo_fraction"])
+        lime_util = float(params.get("lime_utilization", 1.0))
+        dolo_util = float(params.get("dolomite_utilization", 1.0))
+        total_existing = math.fsum(existing.values())
+        if total_existing <= 0 or existing["SiO2"] <= 0:
+            return fail("现有渣源总量和SiO2质量必须大于0", "OUT_OF_DOMAIN")
+        a11 = lime_util * (lime["CaO"] - basicity * lime["SiO2"])
+        a12 = dolo_util * (dolomite["CaO"] - basicity * dolomite["SiO2"])
+        b1 = basicity * existing["SiO2"] - existing["CaO"]
+        a21 = lime_util * (lime["MgO"] - mgo_fraction)
+        a22 = dolo_util * (dolomite["MgO"] - mgo_fraction)
+        b2 = mgo_fraction * total_existing - existing["MgO"]
+        determinant = a11 * a22 - a12 * a21
+        if abs(determinant) <= 1e-12:
+            return fail("石灰与白云石化验形成奇异约束矩阵，无法唯一求解", "NUMERICAL_ERROR")
+        lime_mass = (b1 * a22 - a12 * b2) / determinant
+        dolomite_mass = (a11 * b2 - b1 * a21) / determinant
+        if lime_mass < -1e-9 or dolomite_mass < -1e-9:
+            return fail("目标碱度/MgO约束产生负熔剂加入量，当前原料下不可达", "OUT_OF_DOMAIN")
+        lime_mass, dolomite_mass = max(0.0, lime_mass), max(0.0, dolomite_mass)
+        final = dict(existing)
+        for oxide in sorted(set(final) | set(lime) | set(dolomite)):
+            final[oxide] = final.get(oxide, 0.0) + lime_mass * lime_util * lime.get(oxide, 0.0) + dolomite_mass * dolo_util * dolomite.get(oxide, 0.0)
+        slag_mass = math.fsum(final.values())
+        if final.get("SiO2", 0.0) <= 0 or slag_mass <= 0:
+            return fail("最终SiO2或总渣量为零，无法定义目标指标", "OUT_OF_DOMAIN")
+        achieved_basicity = final["CaO"] / final["SiO2"]
+        achieved_mgo = final["MgO"] / slag_mass
+        basicity_residual = achieved_basicity - basicity
+        mgo_residual = achieved_mgo - mgo_fraction
+        passed = abs(basicity_residual) <= 1e-10 and abs(mgo_residual) <= 1e-10
+        boundary_messages = []
+        if lime_mass <= 1e-9:
+            boundary_messages.append("石灰加入量位于零边界")
+        if dolomite_mass <= 1e-9:
+            boundary_messages.append("白云石加入量位于零边界")
+        if not passed:
+            boundary_messages.append("代回约束的数值残差超过容差")
+        warnings = [BoundaryWarning("flux_addition", message) for message in boundary_messages]
+        return ModelResult(
+            True,
+            result={
+                "basis": params.get("basis", "per_heat"),
+                "lime_addition_kg": lime_mass,
+                "dolomite_addition_kg": dolomite_mass,
+                "predicted_oxide_masses_kg": final,
+                "predicted_slag_mass_kg": slag_mass,
+                "achieved_basicity": achieved_basicity,
+                "achieved_mgo_fraction": achieved_mgo,
+                "basicity_residual": basicity_residual,
+                "mgo_fraction_residual": mgo_residual,
+                "constraint_determinant": determinant,
+                "passed": passed,
+            },
+            boundary_check=BoundaryCheck(passed and not boundary_messages, warnings),
+        )

@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P0-W1 per-tool isolated function-call integration smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W1-A101",
+      "model_code": "A101",
+      "prompt": "必须调用所提供的工具校验 Al2O3 的电荷与价态平衡。化学式为 Al2O3，Al 氧化态为 +3，O 氧化态为 -2，目标电荷为 0，容差为 1e-12。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.balanced", "value": true},
+        {"path": "output.calculated_charge", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W1-A008",
+      "model_code": "A008",
+      "prompt": "必须调用所提供的工具，用 mean 方法填补二维数据 [[1,10],[null,20],[3,30]]。列名依次是 x、temperature，单位依次是 1、K。不要自行填补后直接回答。",
+      "expected": [
+        {"path": "output.imputed_data.1.0", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.remaining_missing_count", "value": 0}
+      ]
+    },
+    {
+      "case_id": "LLM-W1-D021",
+      "model_code": "D021",
+      "prompt": "必须调用所提供的转炉装料物料平衡工具，按 per_heat 基准审计：输入物流 hot_metal，类别 hot_metal，质量100 kg，成分Fe=0.96、C=0.04；输出物流 steel，类别steel，质量96 kg，成分Fe=1；另一个输出物流 carbon，类别offgas，质量4 kg，成分C=1。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.steel_yield", "value": 0.96, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W1-D004",
+      "model_code": "D004",
+      "prompt": "必须调用所提供的BOF熔剂加入量工具。现有氧化物质量(kg/heat)：CaO=10、SiO2=20、MgO=1、Other=9；石灰化验：CaO=0.9、SiO2=0.05、MgO=0.02、Other=0.03；白云石化验：CaO=0.55、SiO2=0.05、MgO=0.35、Other=0.05；目标CaO/SiO2碱度=1.0481927710843373，目标MgO质量分数=0.053636363636363635，两种利用率均为1，基准per_heat。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.lime_addition_kg", "value": 10.0, "absolute_tolerance": 1e-9},
+        {"path": "output.dolomite_addition_kg", "value": 5.0, "absolute_tolerance": 1e-9}
+      ]
+    }
+  ]
+}

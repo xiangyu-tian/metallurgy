@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖当前30个已注册工具。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖当前34个已注册工具（原30项资产加P0-W1的4项）。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -24,7 +24,7 @@
 
 ### `GET /api/v1/tools?fully_eligible=true`
 
-返回标准function-tool数组，默认只暴露通过实现、数据、接口和科学验证四维资格的工具。每个函数名固定为 `metallurgy_{model_code小写}`，参数来自输入JSON Schema。
+返回标准function-tool数组，默认只暴露通过实现、数据、接口和科学验证四维资格的工具。无目录编号冲突的历史函数继续使用 `metallurgy_{model_code小写}`；编号冲突的新工具使用唯一语义函数名，例如 `metallurgy_check_charge_valence_balance`。参数来自输入JSON Schema，函数名一经发布保持稳定。
 
 示例：
 
@@ -111,7 +111,7 @@
 }
 ```
 
-响应包含 `execution_id`、`trace_id`、`model_code`、`model_version`、标准化输入、实际数据记录、边界检查、输出、状态、标准错误码、运行时间和调用主体。
+响应包含 `execution_id`、`trace_id`、`tool_uid`、`catalog_id`、`model_code`、`model_version`、标准化输入、实际数据记录、边界检查、输出、状态、标准错误码、运行时间和调用主体。
 
 ### `GET /api/v1/executions/{execution_id}`
 
@@ -162,17 +162,19 @@
 
 ```json
 {
-  "registered_count": 30,
-  "qualified_executable_count": 30,
-  "implementation_qualified_count": 30,
+  "registered_count": 34,
+  "runtime_tool_count": 34,
+  "catalog_coverage_count": 30,
+  "qualified_executable_count": 34,
+  "implementation_qualified_count": 34,
   "data_required_count": 14,
-  "data_qualified_count": 0,
-  "interface_qualified_count": 30,
-  "fully_eligible_count": 16
+  "data_qualified_count": 14,
+  "interface_qualified_count": 34,
+  "fully_eligible_count": 34
 }
 ```
 
-这些值由注册中心实时计算，不得写死。当前14个数据必需型工具仍使用静态资产，因而不会出现在默认大模型工具清单中。
+这些值由注册中心实时计算，不得写死。当前14个数据必需型工具均通过数据库Repository执行并返回记录级溯源；P0-W1新增4项为显式输入或公式工具，不引入隐藏数据默认值。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -184,6 +186,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、30工具资格测试、四维数据资格、function-tool契约、超过100个自动生成异常输入，以及三种实验模式的调用闭环。
+测试包含原17个黄金种子回归、原30项资产保留、当前34工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。

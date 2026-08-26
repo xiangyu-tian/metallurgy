@@ -92,6 +92,8 @@ class ModelExecutionService:
             "execution_id": execution_id,
             "trace_id": result.trace_id or trace_id,
             "model_code": model_code,
+            "tool_uid": model.tool_uid if model else None,
+            "catalog_id": model.catalog_id if model else None,
             "model_version": model.version if model else None,
             "input": deepcopy(arguments),
             "actual_data_records": payload.get("provenance", []),
@@ -125,6 +127,8 @@ class ExperimentService:
         "A005": ("质量守恒", "物料衡算"),
         "A006": ("反应配平", "配平校验", "元素残差"),
         "A007": ("氧当量", "还原剂当量", "电子当量"),
+        "A101": ("电荷平衡", "价态平衡", "氧化态校验"),
+        "A008": ("缺失值", "数据填补", "插值填补", "knn填补"),
         "B001": ("shomate", "定压热容", "热容", "cp"),
         "B002": ("nasa7", "nasa热物性"),
         "B003": ("显热", "焓积分"),
@@ -148,6 +152,8 @@ class ExperimentService:
         "T002": ("灰体辐射", "辐射换热", "stefan-boltzmann"),
         "D001": ("bof耗氧", "转炉耗氧", "理论耗氧"),
         "D002": ("bof热平衡", "转炉热平衡", "可熔废钢"),
+        "D021": ("转炉装料物料平衡", "转炉装料平衡", "bof装料"),
+        "D004": ("石灰加入量", "白云石加入量", "熔剂加入量", "目标碱度"),
     }
 
     def __init__(
