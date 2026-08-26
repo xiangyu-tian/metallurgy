@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P0-W2 per-tool isolated function-call integration smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W2-E001",
+      "model_code": "E001",
+      "prompt": "必须调用唯一提供的高炉总物料平衡工具，统计基准为per_hour。输入物流：ore，类别ore，质量100 kg；输出物流：iron，类别hot_metal，质量60 kg，以及slag，类别slag，质量40 kg。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.mass_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.burden_mass_kg_per_t_hot_metal", "value": 1666.6666666666667, "absolute_tolerance": 1e-9}
+      ]
+    },
+    {
+      "case_id": "LLM-W2-E002",
+      "model_code": "E002",
+      "prompt": "必须调用唯一提供的高炉铁元素平衡工具，统计基准为per_hour。输入物流ore_fe：类别ore、质量100 kg、Fe质量分数1、Fe平均氧化态+3；输出物流iron：类别hot_metal、质量100 kg、Fe质量分数1、Fe平均氧化态0。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.fe_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.reduction_degree", "value": 1.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W2-E003",
+      "model_code": "E003",
+      "prompt": "必须调用唯一提供的高炉碳平衡工具，统计基准为per_hour。含碳输入物料coke：类别coke、质量12.011 kg、碳质量分数1；气体输出gas：总量1 kmol、CO摩尔分数1；铁水产量1000 kg。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.carbon_residual_kg", "value": 0.0, "absolute_tolerance": 1e-9},
+        {"path": "output.top_gas_carbon_kg", "value": 12.011, "absolute_tolerance": 1e-9}
+      ]
+    },
+    {
+      "case_id": "LLM-W2-E004",
+      "model_code": "E004",
+      "prompt": "必须调用唯一提供的高炉氧平衡工具，统计基准为per_hour。含氧输入物料ore_o：类别ore、质量15.999 kg、氧质量分数1；另一个输入blast_o：类别blast、质量15.999 kg、氧质量分数1；气体输出gas：总量1 kmol、O2摩尔分数1；被还原矿石氧15.999 kg，其中间接还原氧10 kg。不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.oxygen_residual_kg", "value": 0.0, "absolute_tolerance": 1e-9},
+        {"path": "output.direct_reduction_oxygen_kg", "value": 5.999, "absolute_tolerance": 1e-9}
+      ]
+    }
+  ]
+}

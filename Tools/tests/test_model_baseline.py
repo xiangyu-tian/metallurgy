@@ -32,17 +32,17 @@ class BaselineTests(unittest.TestCase):
         with open(benchmark_path, encoding="utf-8") as handle:
             cls.benchmark = json.load(handle)
 
-    def test_approved_thirty_assets_plus_p0_w1_are_registered(self):
+    def test_approved_thirty_assets_plus_p0_w1_w2_are_registered(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 34,
-            "runtime_tool_count": 34,
-            "catalog_coverage_count": 30,
-            "qualified_executable_count": 34,
-            "implementation_qualified_count": 34,
-            "data_required_count": 14,
-            "data_qualified_count": 14,
-            "interface_qualified_count": 34,
-            "fully_eligible_count": 34,
+            "registered_count": 38,
+            "runtime_tool_count": 38,
+            "catalog_coverage_count": 34,
+            "qualified_executable_count": 38,
+            "implementation_qualified_count": 38,
+            "data_required_count": 16,
+            "data_qualified_count": 16,
+            "interface_qualified_count": 38,
+            "fully_eligible_count": 38,
         })
 
     def test_every_model_has_complete_protocol_card(self):

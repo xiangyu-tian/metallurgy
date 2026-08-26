@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v2.json"
+CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v3.json"
 
 
 @lru_cache(maxsize=1)

@@ -30,6 +30,7 @@ class ModelRegistry:
             f"{package_prefix}.models_c",
             f"{package_prefix}.models_t",
             f"{package_prefix}.models_d",
+            f"{package_prefix}.models_e",
         ]:
             try:
                 importlib.import_module(module_name)
