@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W5A F007 isolated provider-forced function-call smoke test; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W5A-F007",
+      "model_code": "F007",
+      "force_tool_choice": true,
+      "prompt": "强制调用唯一提供的结晶器热流计算工具。一个whole-mold冷却回路：质量流量10 kg/s，入口温度293.15 K，出口温度298.15 K，水比热4200 J/(kg*K)，测量来源calibrated_flowmeter_and_paired_rtd；有效换热面积2 m^2，面积口径whole_mold；钢质量流量2 kg/s。所有量均为同一稳态时间窗平均值，不得改用体积流量、不得补充水密度或设备常数，也不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.total_heat_rate_w", "value": 210000.0, "absolute_tolerance": 1e-9},
+        {"path": "output.mean_heat_flux_w_m2", "value": 105000.0, "absolute_tolerance": 1e-9},
+        {"path": "output.heat_removed_j_kg_steel", "value": 105000.0, "absolute_tolerance": 1e-9},
+        {"path": "output.circuit_results.0.temperature_rise_k", "value": 5.0, "absolute_tolerance": 1e-9},
+        {"path": "output.energy_sum_residual_w", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.calculation_method", "value": "cooling_water_sensible_heat_balance_v1"}
+      ]
+    }
+  ]
+}

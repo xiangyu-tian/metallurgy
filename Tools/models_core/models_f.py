@@ -570,3 +570,484 @@ class F003_SteelSuperheat(BaseModelTool):
             },
             boundary_check=BoundaryCheck(not warnings, warnings),
         )
+
+
+class F007_MoldHeatFlux(BaseModelTool):
+    """Average continuous-casting mold heat flux from water-side heat balance."""
+
+    WATER_CRITICAL_TEMPERATURE_K = 647.096
+    model_id, name, version = "F007", "结晶器热流计算", "1.0.0"
+    tool_name = "metallurgy_calc_mold_heat_flux"
+    scenario = "凝固与连铸"
+    priority = "P1"
+    status = qualification_status = "qualified"
+    count_eligible = True
+    model_type = "确定性公式/冷却水侧能量守恒"
+    data_requirement = "FORMULA_ONLY"
+    data_access_mode = "none"
+    description = (
+        "根据一个或多个结晶器冷却水回路的显式质量流量、比热和进出口温度，"
+        "计算总移热率与给定有效面积上的平均热流密度；不内置水物性、设备面积或经验常数。"
+    )
+    applicable_boundary = (
+        "适用于冷却水无相变、质量流量与温度可视为同一稳态时间窗平均值的结晶器整体或分区热平衡；"
+        "结果是水侧平均热流，不代表铜板局部峰值、弯月面瞬态热流或热电偶反演结果。"
+    )
+    temperature_range = [0.0, 647.096]
+    required_data = [
+        "各冷却回路质量流量、进出口绝对温度、比热和测量来源",
+        "与所选回路口径一致的有效换热面积",
+    ]
+    data_source = [
+        "调用者提供的结晶器冷却水测量值与比热",
+        "ISIJ International 63(8), 2023, Eq. (15)",
+    ]
+    source_version = (
+        "water-side-energy-balance-v1; ISIJINT-2023-051 Eq.15; "
+        "IAPWS R2-83(1992)"
+    )
+    formula_reference = (
+        "For circuit i: Qdot_i = mdot_i * cp_i * (T_out_i - T_in_i); "
+        "Qdot_total = sum(Qdot_i); q_mean = Qdot_total / A_effective"
+    )
+    source_records = [
+        {
+            "source_id": "ISIJINT-2023-051",
+            "name": "A Three Dimensional Real-time Heat Transfer Model for Continuous Casting Blooms",
+            "version": "ISIJ International 63(8), 2023, Eq. (15)",
+            "url": "https://www.jstage.jst.go.jp/article/isijinternational/63/8/63_ISIJINT-2023-051/_html/-char/en",
+        },
+        {
+            "source_id": "IAPWS-R2-83-1992",
+            "name": "Revised Release on the Values of Temperature, Pressure and Density at Critical Points",
+            "version": "R2-83(1992)",
+            "url": "https://iapws.org/documents/release/crits",
+        },
+    ]
+    failure_modes = [
+        "冷却回路为空、字段缺失、回路编号重复或含未声明字段",
+        "质量流量、比热、绝对温度或有效面积不是有限正数，或水温达到/超过临界温度",
+        "出口温度低于入口温度且未定义反向换热模式",
+        "测量来源或面积口径为空",
+        "单位钢质量移热请求中的钢质量流量不是有限正数",
+    ]
+    independent_validation = [
+        "单回路结果与手工能量衡算一致",
+        "总移热率等于各回路移热率之和",
+        "结果分别对质量流量、比热和温升呈线性",
+        "平均热流密度等于总移热率除以显式有效面积",
+        "给定钢质量流量时单位钢质量移热等于总移热率除以钢质量流量",
+    ]
+    dependencies = []
+    relations = [
+        {
+            "type": "overlaps_with",
+            "target": "T001",
+            "description": "两者都可返回热流率/热流密度，但T001由平板温差与导热系数求稳态导热，F007由冷却水侧量热求结晶器平均移热。",
+        },
+        {
+            "type": "complements",
+            "target": "T002",
+            "description": "T002计算指定表面间的灰体辐射子项，F007核算结晶器冷却水吸收的总体平均热量，理论对象与适用域不同。",
+        },
+    ]
+    input_fields = [
+        InputField(
+            "cooling_circuits",
+            "结晶器冷却水回路",
+            "array",
+            description=(
+                "1至100个同一稳态时间窗的回路；每项必须显式给出回路编号、质量流量、"
+                "入口/出口温度、该回路采用的水比热和测量来源。"
+            ),
+            min_items=1,
+            max_items=100,
+            items={
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "circuit_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "本次调用内唯一的冷却回路编号",
+                    },
+                    "mass_flow_kg_s": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": "冷却水质量流量；单位: kg/s",
+                    },
+                    "inlet_temperature_k": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "exclusiveMaximum": 647.096,
+                        "description": "回路入口绝对温度；单位: K",
+                    },
+                    "outlet_temperature_k": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "exclusiveMaximum": 647.096,
+                        "description": "回路出口绝对温度；单位: K",
+                    },
+                    "water_specific_heat_j_kg_k": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "description": "本次测量温区采用的水比热；单位: J/(kg*K)",
+                    },
+                    "measurement_source": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "流量、温度及比热的测量或批准来源",
+                    },
+                },
+                "required": [
+                    "circuit_id",
+                    "mass_flow_kg_s",
+                    "inlet_temperature_k",
+                    "outlet_temperature_k",
+                    "water_specific_heat_j_kg_k",
+                    "measurement_source",
+                ],
+            },
+        ),
+        InputField(
+            "effective_heat_transfer_area_m2",
+            "有效换热面积",
+            "number",
+            unit="m^2",
+            min_value=0,
+            description="与所选冷却回路及面积口径一致的有效换热面积；必须显式提供且大于0",
+        ),
+        InputField(
+            "area_definition",
+            "面积口径",
+            "string",
+            description="例如broad_face、narrow_face、whole_mold或明确的调用者自定义口径",
+        ),
+        InputField(
+            "steel_mass_flow_kg_s",
+            "钢质量流量",
+            "number",
+            required=False,
+            unit="kg/s",
+            min_value=0,
+            description="可选；提供时计算单位钢质量移热，必须大于0",
+        ),
+    ]
+    output_fields = [
+        OutputField(
+            "circuit_results",
+            "各冷却回路热平衡结果",
+            "array",
+            "mass_flow:kg/s; temperature:K; cp:J/(kg*K); heat_rate:W; contribution:fraction",
+        ),
+        OutputField("total_heat_rate_w", "总移热率", "number", "W"),
+        OutputField("mean_heat_flux_w_m2", "平均热流密度", "number", "W/m^2"),
+        OutputField("effective_heat_transfer_area_m2", "有效换热面积", "number", "m^2"),
+        OutputField("area_definition", "面积口径", "string"),
+        OutputField(
+            "steel_mass_flow_kg_s",
+            "钢质量流量",
+            "number",
+            "kg/s",
+            description="调用者未提供时为null",
+            nullable=True,
+        ),
+        OutputField(
+            "heat_removed_j_kg_steel",
+            "单位钢质量移热",
+            "number",
+            "J/kg",
+            description="调用者未提供钢质量流量时为null",
+            nullable=True,
+        ),
+        OutputField("energy_sum_residual_w", "回路求和残差", "number", "W"),
+        OutputField("measurement_sources", "测量来源清单", "array"),
+        OutputField("calculation_method", "计算方法", "string"),
+    ]
+    validation_rules = [
+        {"rule": "one_to_one_hundred_unique_circuit_ids"},
+        {"rule": "positive_finite_flow_cp_temperature_and_area"},
+        {"rule": "outlet_temperature_not_below_inlet"},
+        {"rule": "all_equipment_properties_and_measurement_sources_are_explicit"},
+    ]
+    qualification_cases = [
+        {
+            "id": "F007-N1",
+            "kind": "normal",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "whole-mold",
+                        "mass_flow_kg_s": 10,
+                        "inlet_temperature_k": 293.15,
+                        "outlet_temperature_k": 298.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "calibrated_flowmeter_and_paired_rtd",
+                    }
+                ],
+                "effective_heat_transfer_area_m2": 2,
+                "area_definition": "whole_mold",
+                "steel_mass_flow_kg_s": 2,
+            },
+        },
+        {
+            "id": "F007-N2",
+            "kind": "normal",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "wide-face",
+                        "mass_flow_kg_s": 10,
+                        "inlet_temperature_k": 293.15,
+                        "outlet_temperature_k": 298.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "wide_face_instrumentation",
+                    },
+                    {
+                        "circuit_id": "narrow-face",
+                        "mass_flow_kg_s": 5,
+                        "inlet_temperature_k": 294.15,
+                        "outlet_temperature_k": 298.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "narrow_face_instrumentation",
+                    },
+                ],
+                "effective_heat_transfer_area_m2": 3,
+                "area_definition": "whole_mold",
+            },
+        },
+        {
+            "id": "F007-N3",
+            "kind": "normal",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "broad-face-a",
+                        "mass_flow_kg_s": 12.5,
+                        "inlet_temperature_k": 296.15,
+                        "outlet_temperature_k": 302.15,
+                        "water_specific_heat_j_kg_k": 4180,
+                        "measurement_source": "approved_test_loop_2026Q3",
+                    }
+                ],
+                "effective_heat_transfer_area_m2": 1.5,
+                "area_definition": "broad_face",
+            },
+        },
+        {
+            "id": "F007-B1",
+            "kind": "boundary",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "zero-rise-check",
+                        "mass_flow_kg_s": 10,
+                        "inlet_temperature_k": 298.15,
+                        "outlet_temperature_k": 298.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "sensor_zero_check",
+                    }
+                ],
+                "effective_heat_transfer_area_m2": 2,
+                "area_definition": "whole_mold",
+            },
+        },
+        {
+            "id": "F007-F1",
+            "kind": "failure",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "reverse-temperature",
+                        "mass_flow_kg_s": 10,
+                        "inlet_temperature_k": 300.15,
+                        "outlet_temperature_k": 299.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "failure_case",
+                    }
+                ],
+                "effective_heat_transfer_area_m2": 2,
+                "area_definition": "whole_mold",
+            },
+        },
+        {
+            "id": "F007-F2",
+            "kind": "failure",
+            "input": {
+                "cooling_circuits": [
+                    {
+                        "circuit_id": "invalid-area",
+                        "mass_flow_kg_s": 10,
+                        "inlet_temperature_k": 293.15,
+                        "outlet_temperature_k": 298.15,
+                        "water_specific_heat_j_kg_k": 4200,
+                        "measurement_source": "failure_case",
+                    }
+                ],
+                "effective_heat_transfer_area_m2": 0,
+                "area_definition": "whole_mold",
+            },
+        },
+    ]
+
+    _CIRCUIT_FIELDS = {
+        "circuit_id",
+        "mass_flow_kg_s",
+        "inlet_temperature_k",
+        "outlet_temperature_k",
+        "water_specific_heat_j_kg_k",
+        "measurement_source",
+    }
+
+    @staticmethod
+    def _finite_number(value, field_name):
+        if isinstance(value, bool):
+            return None, f"{field_name}必须是有限数值"
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return None, f"{field_name}必须是有限数值"
+        if not math.isfinite(number):
+            return None, f"{field_name}必须是有限数值"
+        return number, None
+
+    def invoke(self, params, context=None):
+        circuits = params["cooling_circuits"]
+        if len(circuits) > 100:
+            return ModelResult(False, error="cooling_circuits最多允许100个回路", error_code="OUT_OF_DOMAIN")
+
+        area, error = self._finite_number(
+            params["effective_heat_transfer_area_m2"],
+            "effective_heat_transfer_area_m2",
+        )
+        if error or area <= 0:
+            return ModelResult(
+                False,
+                error=error or "effective_heat_transfer_area_m2必须大于0",
+                error_code="OUT_OF_DOMAIN",
+            )
+        area_definition = params["area_definition"].strip()
+        if not area_definition:
+            return ModelResult(False, error="area_definition必须是非空面积口径", error_code="INVALID_INPUT")
+
+        steel_mass_flow = params.get("steel_mass_flow_kg_s")
+        if steel_mass_flow is not None:
+            steel_mass_flow, error = self._finite_number(steel_mass_flow, "steel_mass_flow_kg_s")
+            if error or steel_mass_flow <= 0:
+                return ModelResult(
+                    False,
+                    error=error or "steel_mass_flow_kg_s必须大于0",
+                    error_code="OUT_OF_DOMAIN",
+                )
+
+        circuit_rows = []
+        circuit_ids = set()
+        warnings_out = []
+        for index, raw in enumerate(circuits):
+            prefix = f"cooling_circuits[{index}]"
+            if not isinstance(raw, dict):
+                return ModelResult(False, error=f"{prefix}必须是对象", error_code="INVALID_INPUT")
+            missing = sorted(self._CIRCUIT_FIELDS - set(raw))
+            unknown = sorted(set(raw) - self._CIRCUIT_FIELDS)
+            if missing or unknown:
+                details = []
+                if missing:
+                    details.append(f"缺少字段: {', '.join(missing)}")
+                if unknown:
+                    details.append(f"含未声明字段: {', '.join(unknown)}")
+                return ModelResult(False, error=f"{prefix} " + "; ".join(details), error_code="INVALID_INPUT")
+
+            circuit_id = raw["circuit_id"]
+            if not isinstance(circuit_id, str) or not circuit_id.strip():
+                return ModelResult(False, error=f"{prefix}.circuit_id必须是非空字符串", error_code="INVALID_INPUT")
+            circuit_id = circuit_id.strip()
+            if circuit_id in circuit_ids:
+                return ModelResult(False, error=f"回路编号重复: {circuit_id}", error_code="INVALID_INPUT")
+            circuit_ids.add(circuit_id)
+
+            measurement_source = raw["measurement_source"]
+            if not isinstance(measurement_source, str) or not measurement_source.strip():
+                return ModelResult(False, error=f"{prefix}.measurement_source必须是非空字符串", error_code="INVALID_INPUT")
+            measurement_source = measurement_source.strip()
+
+            values = {}
+            for field_name in (
+                "mass_flow_kg_s",
+                "inlet_temperature_k",
+                "outlet_temperature_k",
+                "water_specific_heat_j_kg_k",
+            ):
+                value, error = self._finite_number(raw[field_name], f"{prefix}.{field_name}")
+                if error or value <= 0:
+                    return ModelResult(
+                        False,
+                        error=error or f"{prefix}.{field_name}必须大于0",
+                        error_code="OUT_OF_DOMAIN",
+                    )
+                values[field_name] = value
+
+            if values["inlet_temperature_k"] >= self.WATER_CRITICAL_TEMPERATURE_K \
+                    or values["outlet_temperature_k"] >= self.WATER_CRITICAL_TEMPERATURE_K:
+                return ModelResult(
+                    False,
+                    error=(
+                        f"{prefix}水温必须低于IAPWS临界温度"
+                        f"{self.WATER_CRITICAL_TEMPERATURE_K} K；首版只适用无相变冷却水"
+                    ),
+                    error_code="OUT_OF_DOMAIN",
+                )
+
+            temperature_rise = values["outlet_temperature_k"] - values["inlet_temperature_k"]
+            if temperature_rise < 0:
+                return ModelResult(
+                    False,
+                    error=f"{prefix}出口温度低于入口温度；首版不支持反向换热模式",
+                    error_code="OUT_OF_DOMAIN",
+                )
+            if temperature_rise == 0:
+                warnings_out.append(
+                    BoundaryWarning(
+                        f"{prefix}.outlet_temperature_k",
+                        "出口与入口温度相同，计算得到零移热；请核对传感器分辨率和时间窗同步",
+                    )
+                )
+            heat_rate = (
+                values["mass_flow_kg_s"]
+                * values["water_specific_heat_j_kg_k"]
+                * temperature_rise
+            )
+            circuit_rows.append(
+                {
+                    "circuit_id": circuit_id,
+                    **values,
+                    "temperature_rise_k": temperature_rise,
+                    "heat_rate_w": heat_rate,
+                    "contribution_fraction": 0.0,
+                    "measurement_source": measurement_source,
+                }
+            )
+
+        total_heat_rate = math.fsum(row["heat_rate_w"] for row in circuit_rows)
+        if total_heat_rate > 0:
+            for row in circuit_rows:
+                row["contribution_fraction"] = row["heat_rate_w"] / total_heat_rate
+        circuit_sum = math.fsum(row["heat_rate_w"] for row in circuit_rows)
+        heat_removed_per_steel_mass = (
+            total_heat_rate / steel_mass_flow if steel_mass_flow is not None else None
+        )
+        return ModelResult(
+            True,
+            result={
+                "circuit_results": circuit_rows,
+                "total_heat_rate_w": total_heat_rate,
+                "mean_heat_flux_w_m2": total_heat_rate / area,
+                "effective_heat_transfer_area_m2": area,
+                "area_definition": area_definition,
+                "steel_mass_flow_kg_s": steel_mass_flow,
+                "heat_removed_j_kg_steel": heat_removed_per_steel_mass,
+                "energy_sum_residual_w": total_heat_rate - circuit_sum,
+                "measurement_sources": [row["measurement_source"] for row in circuit_rows],
+                "calculation_method": "cooling_water_sensible_heat_balance_v1",
+            },
+            boundary_check=BoundaryCheck(not warnings_out, warnings_out),
+        )

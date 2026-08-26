@@ -49,7 +49,7 @@ class P0W4SolidificationTests(unittest.TestCase):
         self.assertTrue(any(p.table == "metallurgy_v2.solidification_model_definition" for p in result.provenance))
         return result
 
-    def test_only_w4_tools_pass_strict_gate_and_counts_reach_42(self):
+    def test_w4_tools_remain_qualified_after_w5a(self):
         for code in W4_IDS:
             with self.subTest(code=code):
                 report = self.registry.qualification_report(code)
@@ -58,10 +58,10 @@ class P0W4SolidificationTests(unittest.TestCase):
                 self.assertGreaterEqual(report["boundary_or_failure_cases_passed"], 2)
                 self.assertTrue(self.registry.eligibility_report(code)["fully_eligible"])
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 42, "runtime_tool_count": 42, "catalog_coverage_count": 38,
-            "qualified_executable_count": 42, "implementation_qualified_count": 42,
+            "registered_count": 43, "runtime_tool_count": 43, "catalog_coverage_count": 39,
+            "qualified_executable_count": 43, "implementation_qualified_count": 43,
             "data_required_count": 19, "data_qualified_count": 19,
-            "interface_qualified_count": 42, "fully_eligible_count": 42,
+            "interface_qualified_count": 43, "fully_eligible_count": 43,
         })
 
     def test_asset_hash_utf8_and_database_definition_are_identical(self):
@@ -121,7 +121,7 @@ class P0W4SolidificationTests(unittest.TestCase):
     def test_all_three_execute_through_uniform_llm_tool_route(self):
         client = TestClient(app)
         manifest = client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 42)
+        self.assertEqual(manifest["total"], 43)
         payloads = {
             "F001":{"composition_wt_percent":{"C":0.1},"grid_step_k":5},
             "F002":{"composition_wt_percent":{"C":0.1},"grid_step_k":5},

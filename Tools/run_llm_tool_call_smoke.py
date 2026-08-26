@@ -133,16 +133,22 @@ def main() -> int:
             },
             {"role": "user", "content": case["prompt"]},
         ]
+        first_payload = {
+            "model": model_name,
+            "messages": messages,
+            "tools": [isolated_tool],
+            "stream": False,
+            "temperature": 0,
+            "max_tokens": 4096,
+        }
+        if case.get("force_tool_choice", False):
+            first_payload["tool_choice"] = {
+                "type": "function",
+                "function": {"name": definition["function"]["name"]},
+            }
         first = request_json(
             provider_url,
-            payload={
-                "model": model_name,
-                "messages": messages,
-                "tools": [isolated_tool],
-                "stream": False,
-                "temperature": 0,
-                "max_tokens": 4096,
-            },
+            payload=first_payload,
             headers=provider_headers,
         )
         assistant = provider_message(first)
@@ -199,6 +205,7 @@ def main() -> int:
             "tool_uid": execution.get("tool_uid"),
             "catalog_id": execution.get("catalog_id"),
             "status": "passed",
+            "provider_tool_choice_forced": bool(case.get("force_tool_choice", False)),
             "expected_checks": len(case.get("expected", [])),
             "roundtrip_identity_echoed": True,
             "runtime_ms": round((time.perf_counter() - started) * 1000, 2),

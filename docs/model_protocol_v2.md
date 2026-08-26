@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖当前34个已注册工具（原30项资产加P0-W1的4项）。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖P1-W5A完成后的43个已注册且最终合格工具，表格主能力目录覆盖39项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -73,6 +73,36 @@
 ```
 
 未知函数返回HTTP 404。已注册但未通过最终资格的函数返回HTTP 409和 `TOOL_NOT_FULLY_ELIGIBLE`，不会执行其静态数据路径。
+
+#### F007结晶器热流调用约束
+
+函数名为 `metallurgy_calc_mold_heat_flux`。每个冷却回路必须同时给出质量流量、入口/出口K温度、显式水比热和测量来源；还必须给出与回路口径一致的有效换热面积及面积定义。不得把体积流量直接填入质量流量字段，不得由大模型补水密度、比热、设备面积或经验常数。
+
+```json
+{
+  "arguments": {
+    "cooling_circuits": [
+      {
+        "circuit_id": "whole-mold",
+        "mass_flow_kg_s": 10,
+        "inlet_temperature_k": 293.15,
+        "outlet_temperature_k": 298.15,
+        "water_specific_heat_j_kg_k": 4200,
+        "measurement_source": "calibrated_flowmeter_and_paired_rtd"
+      }
+    ],
+    "effective_heat_transfer_area_m2": 2,
+    "area_definition": "whole_mold",
+    "steel_mass_flow_kg_s": 2
+  },
+  "options": {
+    "validate_boundary": true,
+    "return_provenance": true
+  }
+}
+```
+
+该输入返回总移热率 `210000 W`、平均热流密度 `105000 W/m²` 和单位钢质量移热 `105000 J/kg`。`T_out=T_in` 是带警告的零移热边界；`T_out<T_in`、非正面积或水温达到/超过647.096 K返回 `OUT_OF_DOMAIN`。
 
 ### `POST /api/v1/models/{model_code}/validate`
 
@@ -149,7 +179,7 @@
 
 ## 标准错误码
 
-`INVALID_INPUT`、`UNIT_MISMATCH`、`OUT_OF_DOMAIN`、`MISSING_DATA`、`DATA_BACKEND_UNAVAILABLE`、`MULTIPLE_SPECIES_MATCH`、`PHASE_MISMATCH`、`TEMPERATURE_RANGE_ERROR`、`REACTION_NOT_BALANCED`、`NUMERICAL_ERROR`、`MODEL_NOT_APPLICABLE`、`UNKNOWN_MODEL`、`INTERNAL_ERROR`。
+`INVALID_INPUT`、`UNIT_MISMATCH`、`OUT_OF_DOMAIN`、`MISSING_DATA`、`DATA_BACKEND_UNAVAILABLE`、`MULTIPLE_SPECIES_MATCH`、`PHASE_MISMATCH`、`TEMPERATURE_RANGE_ERROR`、`REACTION_NOT_BALANCED`、`NUMERICAL_ERROR`、`MODEL_NOT_APPLICABLE`、`MODEL_ARTIFACT_UNAVAILABLE`、`UNKNOWN_MODEL`、`INTERNAL_ERROR`。
 
 ## 四维资格与计数
 
@@ -162,19 +192,19 @@
 
 ```json
 {
-  "registered_count": 39,
-  "runtime_tool_count": 39,
-  "catalog_coverage_count": 35,
-  "qualified_executable_count": 34,
-  "implementation_qualified_count": 34,
-  "data_required_count": 16,
-  "data_qualified_count": 16,
-  "interface_qualified_count": 34,
-  "fully_eligible_count": 39
+  "registered_count": 43,
+  "runtime_tool_count": 43,
+  "catalog_coverage_count": 39,
+  "qualified_executable_count": 43,
+  "implementation_qualified_count": 43,
+  "data_required_count": 19,
+  "data_qualified_count": 19,
+  "interface_qualified_count": 43,
+  "fully_eligible_count": 43
 }
 ```
 
-这些值由注册中心实时计算，不得写死。当前14个数据必需型工具均通过数据库Repository执行并返回记录级溯源；P0-W1新增4项为显式输入或公式工具，不引入隐藏数据默认值。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前19个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F007为显式输入的公式工具，不引入隐藏数据默认值，也不增加数据库表或数据集。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -186,6 +216,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前34工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。
+测试包含原17个黄金种子回归、原30项资产保留、当前43工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。

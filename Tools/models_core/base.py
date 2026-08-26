@@ -83,6 +83,8 @@ class InputField:
         placeholder: Optional[str] = None,
         description: str = "",
         items: Optional[Dict[str, Any]] = None,
+        min_items: Optional[int] = None,
+        max_items: Optional[int] = None,
     ):
         self.name = name
         self.label = label
@@ -99,6 +101,8 @@ class InputField:
         self.placeholder = placeholder
         self.description = description
         self.items = items
+        self.min_items = min_items
+        self.max_items = max_items
 
     def to_dict(self) -> dict:
         d = {
@@ -125,6 +129,10 @@ class InputField:
             d["placeholder"] = self.placeholder
         if self.items is not None:
             d["items"] = self.items
+        if self.min_items is not None:
+            d["minItems"] = self.min_items
+        if self.max_items is not None:
+            d["maxItems"] = self.max_items
         return d
 
 
@@ -137,18 +145,20 @@ class OutputField:
         type: str = "number",
         unit: Optional[str] = None,
         description: str = "",
+        nullable: bool = False,
     ):
         self.name = name
         self.label = label
         self.type = type
         self.unit = unit
         self.description = description
+        self.nullable = nullable
 
     def to_dict(self) -> dict:
         d = {
             "name": self.name,
             "label": self.label,
-            "type": self.type,
+            "type": [self.type, "null"] if self.nullable else self.type,
             "description": self.description,
         }
         if self.unit:
@@ -253,6 +263,10 @@ class BaseModelTool:
                 prop["enum"] = list(field_spec.enum)
             if field_spec.items is not None:
                 prop["items"] = field_spec.items
+            if field_spec.min_items is not None:
+                prop["minItems"] = field_spec.min_items
+            if field_spec.max_items is not None:
+                prop["maxItems"] = field_spec.max_items
             properties[field_spec.name] = prop
         return {
             "type": "object",
