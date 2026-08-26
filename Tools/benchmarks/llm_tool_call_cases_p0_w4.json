@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P0-W4 F001/F002/F004 isolated forced function-call smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W4-F001", "model_code": "F001",
+      "prompt": "必须调用唯一提供的钢液液相线工具。输入成分为C=0.1 wt%，温度搜索范围1400到1900 K，网格步长5 K。不得直接计算。",
+      "expected": [{"path":"output.model_asset_id","value":"MATCALC-MC_FE-2.059-PYCALPHAD"}]
+    },
+    {
+      "case_id": "LLM-W4-F002", "model_code": "F002",
+      "prompt": "必须调用唯一提供的钢液固相线工具。输入成分为C=0.1 wt%，温度搜索范围1400到1900 K，网格步长5 K。不得直接计算。",
+      "expected": [{"path":"output.model_asset_id","value":"MATCALC-MC_FE-2.059-PYCALPHAD"}]
+    },
+    {
+      "case_id": "LLM-W4-F004", "model_code": "F004",
+      "prompt": "必须调用唯一提供的凝固分数曲线工具。输入成分C=0.1 wt%，模型选equilibrium，起始温度1900 K，终止温度1400 K，降温步长5 K。不得直接计算。",
+      "expected": [
+        {"path":"output.model","value":"equilibrium"},
+        {"path":"output.converged","value":true},
+        {"path":"output.model_asset_id","value":"MATCALC-MC_FE-2.059-PYCALPHAD"}
+      ]
+    }
+  ]
+}

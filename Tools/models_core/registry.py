@@ -18,6 +18,8 @@ class ModelRegistry:
     def __init__(self):
         self._models: Dict[str, BaseModelTool] = {}
         self._initialized = False
+        self._qualification_cache: Dict[str, dict] = {}
+        self._eligibility_cache: Dict[str, dict] = {}
 
     def discover(self, package_name: str = "models_core") -> int:
         """扫描当前包及子模块，注册所有 BaseModelTool 实例"""
@@ -48,6 +50,8 @@ class ModelRegistry:
                 discovered[cls.model_id] = instance
 
         self._models = discovered
+        self._qualification_cache.clear()
+        self._eligibility_cache.clear()
         self._initialized = True
         return len(self._models)
 
@@ -68,6 +72,8 @@ class ModelRegistry:
         if model.model_id in self._models:
             raise ValueError(f"重复模型 ID: {model.model_id}")
         self._models[model.model_id] = model
+        self._qualification_cache.clear()
+        self._eligibility_cache.clear()
 
     def get(self, model_id: str) -> Optional[BaseModelTool]:
         """根据 model_id 获取模型实例"""
@@ -77,6 +83,8 @@ class ModelRegistry:
 
     def qualification_report(self, model_id: str) -> dict:
         """按可执行工具准入规则审查单个注册项，并执行其准入样例。"""
+        if model_id in self._qualification_cache:
+            return dict(self._qualification_cache[model_id])
         model = self.get(model_id)
         if model is None:
             return {"qualified": False, "reasons": [f"未知模型 ID: {model_id}"],
@@ -160,12 +168,14 @@ class ModelRegistry:
         if nonnormal_passed < 2:
             reasons.append(f"边界/失败准入样例不足2个: {nonnormal_passed}")
 
-        return {
+        report = {
             "qualified": not reasons,
             "reasons": reasons,
             "normal_cases_passed": normal_passed,
             "boundary_or_failure_cases_passed": nonnormal_passed,
         }
+        self._qualification_cache[model_id] = report
+        return dict(report)
 
     def _interface_qualification(self, model: BaseModelTool) -> tuple[bool, List[str]]:
         """验证模型能否转换成稳定、唯一的大模型function-tool契约。"""
@@ -224,6 +234,11 @@ class ModelRegistry:
 
     def eligibility_report(self, model_id: str) -> dict:
         """返回实现、数据、接口、科学验证四维资格和最终计数资格。"""
+        if model_id in self._eligibility_cache:
+            cached = self._eligibility_cache[model_id]
+            return {**cached, "implementation_reasons": list(cached["implementation_reasons"]),
+                    "data_reasons": list(cached["data_reasons"]),
+                    "interface_reasons": list(cached["interface_reasons"])}
         model = self.get(model_id)
         if model is None:
             return {
@@ -252,7 +267,7 @@ class ModelRegistry:
             and interface_qualified
             and scientific_qualified
         )
-        return {
+        report = {
             "implementation_qualified": implementation["qualified"],
             "data_required": data_required,
             "data_qualified": data_qualified,
@@ -263,6 +278,10 @@ class ModelRegistry:
             "data_reasons": data_reasons,
             "interface_reasons": interface_reasons,
         }
+        self._eligibility_cache[model_id] = report
+        return {**report, "implementation_reasons": list(report["implementation_reasons"]),
+                "data_reasons": list(report["data_reasons"]),
+                "interface_reasons": list(report["interface_reasons"])}
 
     def get_counts(self) -> dict:
         """分别报告注册项数量和通过严格资格闸门的真实工具数量。"""

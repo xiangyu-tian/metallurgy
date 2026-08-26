@@ -1,0 +1,3 @@
+# Scientific model assets are checksum-addressed; line-ending conversion would
+# invalidate their approved SHA-256 and must never be applied.
+Tools/models_core/data/calculation_assets/*.tdb -text

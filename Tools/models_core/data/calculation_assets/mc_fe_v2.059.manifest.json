@@ -1,0 +1,28 @@
+{
+  "model_asset_id": "MATCALC-MC_FE-2.059-PYCALPHAD",
+  "dataset_id": "DS_MATCALC_MC_FE_2059",
+  "model_family": "CALPHAD steel solidification",
+  "model_version": "mc_fe_v2.059",
+  "asset_file": "mc_fe_v2.059.pycalphad.tdb",
+  "asset_sha256": "a8628b6e0cb117f31d8278d87545e2d29fea78c9573694d0c51f1c72e50ac5e3",
+  "source_url": "https://github.com/pyroll-project/pyroll-examples/blob/0a8dd09136e3c9c1e73afee054bb55a8f6cd84b0/mc_fe_v2.059.pycalphad.tdb",
+  "source_commit": "0a8dd09136e3c9c1e73afee054bb55a8f6cd84b0",
+  "license": "ODbL-1.0 database; DBCL-1.0 individual contents",
+  "solver": {"name": "pycalphad", "version": "0.11.2"},
+  "solidification_solver": {"name": "scheil", "version": "0.3.0"},
+  "temperature_range_k": [673.0, 2000.0],
+  "composition_basis": "weight_percent_solute_with_iron_balance",
+  "supported_components": ["C", "SI", "MN", "CR", "NI", "MO", "CU", "AL"],
+  "component_max_wt_percent": {
+    "C": 0.5,
+    "SI": 3.5,
+    "MN": 25.0,
+    "CR": 25.0,
+    "NI": 26.0,
+    "MO": 5.0,
+    "CU": 1.0,
+    "AL": 3.0
+  },
+  "phase_set": ["LIQUID", "FCC_A1", "BCC_A2", "CEMENTITE", "M23C6", "M7C3"],
+  "scope_note": "First qualified scope intentionally excludes P, S, N and other solutes; the database contains more components, but those paths have not passed this tool version's admission tests."
+}

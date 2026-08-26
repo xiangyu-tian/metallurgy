@@ -6,6 +6,7 @@ dist/
 Thumbs.db
 *.tar.gz
 venv/
+.venv/
 __pycache__/
 *.pyc
 %USERPROFILE%/
