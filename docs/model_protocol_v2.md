@@ -162,15 +162,15 @@
 
 ```json
 {
-  "registered_count": 38,
-  "runtime_tool_count": 38,
-  "catalog_coverage_count": 34,
+  "registered_count": 39,
+  "runtime_tool_count": 39,
+  "catalog_coverage_count": 35,
   "qualified_executable_count": 34,
   "implementation_qualified_count": 34,
   "data_required_count": 16,
   "data_qualified_count": 16,
   "interface_qualified_count": 34,
-  "fully_eligible_count": 38
+  "fully_eligible_count": 39
 }
 ```
 

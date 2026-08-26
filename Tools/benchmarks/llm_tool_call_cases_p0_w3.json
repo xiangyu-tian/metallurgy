@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P0-W3 F003 isolated function-call integration smoke test; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W3-F003",
+      "model_code": "F003",
+      "prompt": "必须调用唯一提供的钢液过热度工具。钢液温度1600 degC，液相线温度1530 degC，液相线来源为approved_external_model:v2；要求按过热度下限20 K、上限80 K判断。不要预测液相线，也不要自行计算后直接回答。",
+      "expected": [
+        {"path": "output.superheat_k", "value": 70.0, "absolute_tolerance": 1e-9},
+        {"path": "output.superheat_degc", "value": 70.0, "absolute_tolerance": 1e-9},
+        {"path": "output.limit_status", "value": "within_range"},
+        {"path": "output.limits_applied", "value": true}
+      ]
+    }
+  ]
+}
