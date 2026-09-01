@@ -89,15 +89,15 @@ class P1W6AKineticsDiffusionTests(unittest.TestCase):
 
     def test_four_tools_pass_all_admission_gates_and_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 80,
-            "runtime_tool_count": 80,
+            "registered_count": 86,
+            "runtime_tool_count": 86,
             "catalog_coverage_count": 68,
-            "qualified_executable_count": 80,
-            "implementation_qualified_count": 80,
+            "qualified_executable_count": 86,
+            "implementation_qualified_count": 86,
             "data_required_count": 30,
             "data_qualified_count": 30,
-            "interface_qualified_count": 80,
-            "fully_eligible_count": 80,
+            "interface_qualified_count": 86,
+            "fully_eligible_count": 86,
         })
         for code in W6A_IDS:
             with self.subTest(code=code):
@@ -238,7 +238,7 @@ class P1W6AKineticsDiffusionTests(unittest.TestCase):
             "C007": c007_payload(),
         }
         manifest = self.client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 80)
+        self.assertEqual(manifest["total"], 86)
         self.assertEqual(manifest["catalog_coverage_count"], 68)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         for code, payload in payloads.items():

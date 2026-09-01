@@ -24,7 +24,7 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
     def test_all_current_runtime_assets_are_preserved_once(self):
         mapped = [entry["runtime_model_code"] for entry in self.crosswalk["entries"]]
         registered = [entry["model_code"] for entry in self.registry.list_models()]
-        self.assertEqual(len(mapped), 80)
+        self.assertEqual(len(mapped), 86)
         self.assertEqual(len(mapped), len(set(mapped)))
         self.assertEqual(set(mapped), set(registered))
 
@@ -62,7 +62,7 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
 
     def test_registry_exposes_dual_identity_and_dual_counts(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["runtime_tool_count"], 80)
+        self.assertEqual(counts["runtime_tool_count"], 86)
         self.assertEqual(counts["catalog_coverage_count"], 68)
 
         oxygen = self.registry.get("A007")

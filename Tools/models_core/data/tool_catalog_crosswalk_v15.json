@@ -1,0 +1,82 @@
+{
+  "schema_version": "15.0.0",
+  "supersedes": "tool_catalog_crosswalk_v14.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v14.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 86,
+    "baseline_commit": "P1-W11-pending",
+    "milestone": "P1-W11"
+  },
+  "summary": {
+    "same": 63,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 68,
+    "runtime_assets_preserved": 86
+  },
+  "entries": [
+    {
+      "runtime_model_code": "B026",
+      "runtime_name": "Peng-Robinson状态方程与逸度",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["B009", "B013", "B027"],
+      "proposed_tool_uid": "metallurgy.extension.b026.peng_robinson_fugacity.v1"
+    },
+    {
+      "runtime_model_code": "B027",
+      "runtime_name": "理想气液泡点与露点",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["B014", "B019", "B026"],
+      "proposed_tool_uid": "metallurgy.extension.b027.ideal_vle_bubble_dew.v1"
+    },
+    {
+      "runtime_model_code": "C012",
+      "runtime_name": "球体外流对流换热与传质系数",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["C010", "C011", "T003"],
+      "proposed_tool_uid": "metallurgy.extension.c012.sphere_external_convection_transfer.v1"
+    },
+    {
+      "runtime_model_code": "D022",
+      "runtime_name": "钢水收得率与铁损分解",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A004", "A005", "D014", "D021"],
+      "proposed_tool_uid": "metallurgy.extension.d022.steel_yield_iron_loss.v1"
+    },
+    {
+      "runtime_model_code": "H002",
+      "runtime_name": "钢包脱硫平衡与脱除量",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A005", "D011", "H003"],
+      "proposed_tool_uid": "metallurgy.extension.h002.ladle_desulfurization_equilibrium.v1"
+    },
+    {
+      "runtime_model_code": "H003",
+      "runtime_name": "氩气搅拌均混时间",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["C011", "H002", "T003"],
+      "proposed_tool_uid": "metallurgy.extension.h003.ladle_argon_mixing_time.v1"
+    }
+  ]
+}

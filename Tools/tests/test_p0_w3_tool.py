@@ -119,7 +119,7 @@ class P0W3SteelSuperheatTests(unittest.TestCase):
     def test_f003_executes_through_uniform_http_route(self):
         client = TestClient(app)
         manifest = client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 80)
+        self.assertEqual(manifest["total"], 86)
         model = self.registry.get("F003")
         response = client.post(
             f"/api/v1/tools/{model.tool_name}/call",

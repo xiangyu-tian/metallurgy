@@ -58,10 +58,10 @@ class P0W4SolidificationTests(unittest.TestCase):
                 self.assertGreaterEqual(report["boundary_or_failure_cases_passed"], 2)
                 self.assertTrue(self.registry.eligibility_report(code)["fully_eligible"])
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 80, "runtime_tool_count": 80, "catalog_coverage_count": 68,
-            "qualified_executable_count": 80, "implementation_qualified_count": 80,
+            "registered_count": 86, "runtime_tool_count": 86, "catalog_coverage_count": 68,
+            "qualified_executable_count": 86, "implementation_qualified_count": 86,
             "data_required_count": 30, "data_qualified_count": 30,
-            "interface_qualified_count": 80, "fully_eligible_count": 80,
+            "interface_qualified_count": 86, "fully_eligible_count": 86,
         })
 
     def test_asset_hash_utf8_and_database_definition_are_identical(self):
@@ -121,7 +121,7 @@ class P0W4SolidificationTests(unittest.TestCase):
     def test_all_three_execute_through_uniform_llm_tool_route(self):
         client = TestClient(app)
         manifest = client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 80)
+        self.assertEqual(manifest["total"], 86)
         payloads = {
             "F001":{"composition_wt_percent":{"C":0.1},"grid_step_k":5},
             "F002":{"composition_wt_percent":{"C":0.1},"grid_step_k":5},

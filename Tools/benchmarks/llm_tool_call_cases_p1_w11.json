@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W11 six isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W11-B026",
+      "model_code": "B026",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Peng-Robinson纯组分逸度工具。temperature_k=300，pressure_pa=5000000，critical_temperature_k=190.564，critical_pressure_pa=4599200，acentric_factor=0.011，phase_root=vapor。",
+      "expected": [
+        {"path": "output.compressibility_factor", "value": 0.90176614392674, "absolute_tolerance": 1e-12},
+        {"path": "output.fugacity_coefficient", "value": 0.901317149738987, "absolute_tolerance": 1e-12},
+        {"path": "output.fugacity_pa", "value": 4506585.748694935, "absolute_tolerance": 1e-6},
+        {"path": "output.model_version", "value": "peng-robinson-pure-fluid-1976-v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W11-B027",
+      "model_code": "B027",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的理想气液泡点露点工具。mode=bubble_pressure，temperature_k=340，components严格为water(x=0.4,A=7.19622,B=1730.63,C=233.426,Tmin=273.15,Tmax=373.15)和ethanol(x=0.6,A=7.32908,B=1642.89,C=230.3,Tmin=273.15,Tmax=351.47)。",
+      "expected": [
+        {"path": "output.equilibrium_pressure_kpa", "value": 48.71444849609584, "absolute_tolerance": 1e-10},
+        {"path": "output.equilibrium_mole_fractions.water", "value": 0.22241184952170823, "absolute_tolerance": 1e-12},
+        {"path": "output.phase_equilibrium_residual", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.feed_phase", "value": "liquid"}
+      ]
+    },
+    {
+      "case_id": "LLM-W11-C012",
+      "model_code": "C012",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的球体外流对流换热传质工具。reynolds_number=100，characteristic_diameter_m=0.01，prandtl_number=0.71，thermal_conductivity_w_m_k=0.026；不提供质传递支路。",
+      "expected": [
+        {"path": "output.nusselt_number", "value": 7.352672842673808, "absolute_tolerance": 1e-12},
+        {"path": "output.heat_transfer_coefficient_w_m2_k", "value": 19.116949390951902, "absolute_tolerance": 1e-12},
+        {"path": "output.sherwood_number", "value": null},
+        {"path": "output.heat_definition_residual_w_m2_k", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W11-D022",
+      "model_code": "D022",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的钢水收得率与铁损分解工具。charge_streams为hot_metal(90000kg,Fe=0.94)和scrap(10000kg,Fe=0.98)，steel_mass_kg=92000，steel_iron_mass_fraction=0.995，loss_streams为slag(slag_oxidation,5000kg,Fe=0.35)和dust(dust,1000kg,Fe=0.5)。",
+      "expected": [
+        {"path": "output.input_iron_mass_kg", "value": 94400.0, "absolute_tolerance": 1e-9},
+        {"path": "output.unaccounted_iron_mass_kg", "value": 610.0, "absolute_tolerance": 1e-9},
+        {"path": "output.steel_mass_yield_fraction", "value": 0.92, "absolute_tolerance": 1e-12},
+        {"path": "output.mass_balance_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W11-H002",
+      "model_code": "H002",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的钢包脱硫两相平衡工具。steel_mass_kg=100000，slag_mass_kg=1500，initial_steel_sulfur_mass_fraction=0.0002，initial_slag_sulfur_mass_fraction=0，sulfur_partition_ratio=100。",
+      "expected": [
+        {"path": "output.equilibrium_steel_sulfur_mass_fraction", "value": 0.00008, "absolute_tolerance": 1e-12},
+        {"path": "output.sulfur_transferred_to_slag_kg", "value": 12.0, "absolute_tolerance": 1e-12},
+        {"path": "output.desulfurization_fraction", "value": 0.6, "absolute_tolerance": 1e-12},
+        {"path": "output.transfer_direction", "value": "metal_to_slag"}
+      ]
+    },
+    {
+      "case_id": "LLM-W11-H003",
+      "model_code": "H003",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的氩气搅拌均混时间工具。steel_temperature_k=1873，steel_mass_t=100，argon_flow_nm3_min=1，injection_depth_m=3，surface_pressure_pa=101325，plug_count=1。",
+      "expected": [
+        {"path": "output.specific_stirring_power_w_t", "value": 128.2383610199027, "absolute_tolerance": 1e-10},
+        {"path": "output.mixing_time_s", "value": 114.7843828348448, "absolute_tolerance": 1e-10},
+        {"path": "output.plug_count_factor", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.model_version", "value": "nakanishi-gas-stirring-v1"}
+      ]
+    }
+  ]
+}
