@@ -37,13 +37,13 @@ class WaveOneQualificationTests(unittest.TestCase):
 
     def test_registry_reports_strict_counts_and_gate_details(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["registered_count"], 67)
-        self.assertEqual(counts["qualified_executable_count"], 67)
+        self.assertEqual(counts["registered_count"], 74)
+        self.assertEqual(counts["qualified_executable_count"], 74)
         qualified = {
             card["model_code"]
             for card in self.registry.list_models(qualified_only=True)
         }
-        self.assertEqual(len(qualified), 67)
+        self.assertEqual(len(qualified), 74)
         self.assertTrue({f"A{i:03d}" for i in range(1, 8)} <= qualified)
         for model_code in qualified:
             report = self.registry.qualification_report(model_code)

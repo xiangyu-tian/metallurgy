@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W9 seven isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W9-C009",
+      "model_code": "C009",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的导热系数混合工具。phases严格为[{name:a,conductivity_w_m_k:4,volume_fraction:0.25},{name:b,conductivity_w_m_k:1,volume_fraction:0.75}]，method=series，不得添加其他字段。",
+      "expected": [
+        {"path": "output.effective_conductivity_w_m_k", "value": 1.2307692307692308, "absolute_tolerance": 1e-12},
+        {"path": "output.series_bound_w_m_k", "value": 1.2307692307692308, "absolute_tolerance": 1e-12},
+        {"path": "output.parallel_bound_w_m_k", "value": 1.75, "absolute_tolerance": 1e-12},
+        {"path": "output.method", "value": "series"}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-C010",
+      "model_code": "C010",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的填充床传质工具。superficial_velocity_m_s=1，particle_diameter_m=0.01，fluid_density_kg_m3=1.2，dynamic_viscosity_pa_s=0.000018，diffusivity_m2_s=0.00002。",
+      "expected": [
+        {"path": "output.reynolds_number", "value": 666.6666666666667, "absolute_tolerance": 1e-10},
+        {"path": "output.schmidt_number", "value": 0.75, "absolute_tolerance": 1e-12},
+        {"path": "output.correlation", "value": "Wakao-Funazkri-1978"},
+        {"path": "output.reynolds_applicable_range.1", "value": 10000.0, "absolute_tolerance": 0}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-E006",
+      "model_code": "E006",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Rist操作线工具。iron_basis_kmol=1，blast_oxygen_atom_kmol=1，burden_oxygen_atom_kmol=1.5，top_gas_co_kmol=1.5，top_gas_co2_kmol=0.5。",
+      "expected": [
+        {"path": "output.active_top_gas_carbon_per_iron", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.y_intercept", "value": -1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.top_gas_oxygen_per_carbon", "value": 1.25, "absolute_tolerance": 1e-12},
+        {"path": "output.passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-E007",
+      "model_code": "E007",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的高炉两区热平衡工具。hot_metal_mass_kg=1000；高温区输入[{name:combustion,category:reaction,heat_kj:100}]、输出[{name:hot_products,category:sensible,heat_kj:20}]；低温区输入[{name:upper_reaction,category:reaction,heat_kj:10}]、输出[{name:top_gas,category:sensible,heat_kj:90}]；high_to_low_interface_heat_kj=80。",
+      "expected": [
+        {"path": "output.high_zone_residual_kj", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.low_zone_residual_kj", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.overall_residual_kj", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.overall_passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-E009",
+      "model_code": "E009",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的喷煤替代工具。coal_injection_kg=100，coal_fixed_carbon_fraction=0.75，coal_burnout_fraction=0.9，coke_fixed_carbon_fraction=0.85，coal_lhv_mj_kg=28，coke_lhv_mj_kg=29，coal_heat_utilization_fraction=0.8，coke_heat_utilization_fraction=0.9，replacement_basis=fixed_carbon。",
+      "expected": [
+        {"path": "output.fixed_carbon_replacement_ratio", "value": 0.7941176470588235, "absolute_tolerance": 1e-12},
+        {"path": "output.theoretical_coke_replaced_kg", "value": 79.41176470588235, "absolute_tolerance": 1e-10},
+        {"path": "output.coal_effective_fixed_carbon_kg", "value": 67.5, "absolute_tolerance": 1e-12},
+        {"path": "output.limiting_basis", "value": "fixed_carbon"}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-E012",
+      "model_code": "E012",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的风口前理论煤气工具。dry_blast_nm3=22.414，dry_blast_oxygen_mole_fraction=0.21，supplemental_oxygen_nm3=0，steam_kmol=0，fuel_element_atoms_kmol严格为{C:0.5,H:0,O:0,N:0}。",
+      "expected": [
+        {"path": "output.component_amounts_kmol.CO", "value": 0.42, "absolute_tolerance": 1e-12},
+        {"path": "output.component_amounts_kmol.N2", "value": 0.79, "absolute_tolerance": 1e-12},
+        {"path": "output.total_theoretical_gas_kmol", "value": 1.21, "absolute_tolerance": 1e-12},
+        {"path": "output.unreacted_carbon_kmol", "value": 0.08, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W9-E014",
+      "model_code": "E014",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Ergun压降工具。particle_diameter_m=0.02，sphericity=1，void_fraction=0.4，superficial_velocity_m_s=1，gas_density_kg_m3=1.2，gas_dynamic_viscosity_pa_s=0.000018，bed_height_m=10。",
+      "expected": [
+        {"path": "output.effective_particle_diameter_m", "value": 0.02, "absolute_tolerance": 1e-12},
+        {"path": "output.viscous_pressure_gradient_pa_m", "value": 37.96875, "absolute_tolerance": 1e-10},
+        {"path": "output.inertial_pressure_gradient_pa_m", "value": 984.3749999999997, "absolute_tolerance": 1e-9},
+        {"path": "output.total_pressure_drop_pa", "value": 10223.437499999996, "absolute_tolerance": 1e-8}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "schema_version": "13.0.0",
+  "supersedes": "tool_catalog_crosswalk_v12.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v12.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 74,
+    "baseline_commit": "P1-W9-pending",
+    "milestone": "P1-W9"
+  },
+  "summary": {
+    "same": 63,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 3,
+    "extension": 3,
+    "catalog_entries_covered": 68,
+    "runtime_assets_preserved": 74
+  },
+  "entries": [
+    {
+      "runtime_model_code": "C009",
+      "runtime_name": "导热系数混合规则",
+      "catalog_id": "C009",
+      "catalog_name": "导热系数混合规则",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["T001", "F005"],
+      "proposed_tool_uid": "metallurgy.catalog.c009.effective_thermal_conductivity.v1"
+    },
+    {
+      "runtime_model_code": "C010",
+      "runtime_name": "填充床颗粒-流体传质系数",
+      "catalog_id": "C010",
+      "catalog_name": "界面传质系数估算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C002", "C006", "E014"],
+      "proposed_tool_uid": "metallurgy.catalog.c010.packed_bed_mass_transfer.v1"
+    },
+    {
+      "runtime_model_code": "E006",
+      "runtime_name": "简化C-O Rist操作线",
+      "catalog_id": "E006",
+      "catalog_name": "Rist操作线",
+      "mapping_status": "scope_variant",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["E003", "E004", "E007"],
+      "proposed_tool_uid": "metallurgy.scope_variant.e006.simplified_co_rist.v1"
+    },
+    {
+      "runtime_model_code": "E007",
+      "runtime_name": "高炉两区静态热平衡",
+      "catalog_id": "E007",
+      "catalog_name": "高炉热平衡",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B003", "B006", "E006"],
+      "proposed_tool_uid": "metallurgy.catalog.e007.zonal_heat_balance.v1"
+    },
+    {
+      "runtime_model_code": "E009",
+      "runtime_name": "喷煤理论等效替代",
+      "catalog_id": "E009",
+      "catalog_name": "喷煤等效替代",
+      "mapping_status": "scope_variant",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["E003", "E007"],
+      "proposed_tool_uid": "metallurgy.scope_variant.e009.pci_theoretical_equivalence.v1"
+    },
+    {
+      "runtime_model_code": "E012",
+      "runtime_name": "风口前理论煤气量",
+      "catalog_id": "E012",
+      "catalog_name": "风口前煤气量",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A007", "E003", "E004", "E005"],
+      "proposed_tool_uid": "metallurgy.catalog.e012.tuyere_theoretical_gas.v1"
+    },
+    {
+      "runtime_model_code": "E014",
+      "runtime_name": "料柱Ergun压降",
+      "catalog_id": "E014",
+      "catalog_name": "料柱Ergun压降",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C010"],
+      "proposed_tool_uid": "metallurgy.catalog.e014.ergun_pressure_drop.v1"
+    }
+  ]
+}
