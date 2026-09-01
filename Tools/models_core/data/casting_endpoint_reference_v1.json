@@ -1,0 +1,171 @@
+{
+  "asset_id": "P1-W5C-CASTING-ENDPOINT-2026.09-v1",
+  "asset_version": "2026.09-v1",
+  "normalization": {
+    "unit_system": "SI",
+    "time": "s",
+    "length": "m",
+    "casting_speed": "m/s",
+    "solid_fraction": "1"
+  },
+  "datasets": [
+    {
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "name": "F006 solidification-end event-location benchmarks",
+      "category": "数值模型验证",
+      "provider": "metallurgy-tools verification suite",
+      "license": "Project-generated mathematical identities; no third-party or plant data",
+      "access_url": null,
+      "ingestion_mode": "versioned project-generated benchmark asset",
+      "version": "2026.09-v1",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "A",
+      "lineage_json": {
+        "method": "Hand-computable monotone solid-fraction curves and synthetic equipment bounds",
+        "purpose": "Numerical verification only; not a production machine or DS042 casting-run dataset",
+        "restricted_ds042_imported": false
+      }
+    }
+  ],
+  "machine_configurations": [
+    {
+      "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "equipment_id": "SYNTHETIC_VALIDATION_MACHINE_LONG",
+      "configuration_name": "Synthetic 0.20 m effective-length validation machine",
+      "configuration_version": "2026.09-v1",
+      "section_shape": "RECTANGULAR",
+      "section_width_m": 0.01,
+      "section_thickness_m": 0.01,
+      "mold_length_m": 0.02,
+      "effective_metallurgical_length_m": 0.20,
+      "casting_speed_min_m_s": 0.005,
+      "casting_speed_max_m_s": 0.05,
+      "unit_system": "SI",
+      "usage_scope": "MATHEMATICAL_BENCHMARK_ONLY",
+      "source_kind": "PROJECT_GENERATED_IDENTITY",
+      "source_ref": "Synthetic geometry for F006 threshold-event and equipment-boundary verification",
+      "source_url": null,
+      "license": "Project-generated mathematical identities; no third-party or plant data",
+      "uncertainty_json": {"exact_constants": true},
+      "metadata": {
+        "is_real_equipment": false,
+        "prohibited_use": "engineering design, production control, or plant alarm"
+      },
+      "is_approved": true
+    },
+    {
+      "machine_configuration_id": "F006_BENCH_SHORT_008M_V1",
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "equipment_id": "SYNTHETIC_VALIDATION_MACHINE_SHORT",
+      "configuration_name": "Synthetic 0.08 m effective-length validation machine",
+      "configuration_version": "2026.09-v1",
+      "section_shape": "RECTANGULAR",
+      "section_width_m": 0.01,
+      "section_thickness_m": 0.01,
+      "mold_length_m": 0.02,
+      "effective_metallurgical_length_m": 0.08,
+      "casting_speed_min_m_s": 0.005,
+      "casting_speed_max_m_s": 0.05,
+      "unit_system": "SI",
+      "usage_scope": "MATHEMATICAL_BENCHMARK_ONLY",
+      "source_kind": "PROJECT_GENERATED_IDENTITY",
+      "source_ref": "Synthetic short machine for F006 beyond-exit status verification",
+      "source_url": null,
+      "license": "Project-generated mathematical identities; no third-party or plant data",
+      "uncertainty_json": {"exact_constants": true},
+      "metadata": {
+        "is_real_equipment": false,
+        "prohibited_use": "engineering design, production control, or plant alarm"
+      },
+      "is_approved": true
+    }
+  ],
+  "benchmark_cases": [
+    {
+      "benchmark_id": "F006-LINEAR-INSIDE-V1",
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "model_code": "F006",
+      "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+      "reference_type": "LINEAR_INTERPOLATION_IDENTITY",
+      "input_json": {
+        "casting_speed_m_s": 0.02,
+        "endpoint_solid_fraction_threshold": 0.8,
+        "center_solid_fraction_curve": [
+          {"time_s": 0.0, "center_solid_fraction": 0.0},
+          {"time_s": 5.0, "center_solid_fraction": 0.5},
+          {"time_s": 10.0, "center_solid_fraction": 1.0}
+        ]
+      },
+      "expected_json": {
+        "solidification_end_time_s": 8.0,
+        "solidification_end_position_m": 0.16,
+        "equipment_status": "inside_machine",
+        "exit_center_solid_fraction": 1.0
+      },
+      "tolerance_json": {"time_s": 1e-12, "position_m": 1e-12, "solid_fraction": 1e-12},
+      "source_ref": "Hand-computable linear interpolation and z=v*t identity",
+      "source_url": null,
+      "within_domain": true,
+      "metadata": {"independent_reference": "manual arithmetic"}
+    },
+    {
+      "benchmark_id": "F006-NONLINEAR-INSIDE-V1",
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "model_code": "F006",
+      "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+      "reference_type": "PIECEWISE_LINEAR_INTERPOLATION_IDENTITY",
+      "input_json": {
+        "casting_speed_m_s": 0.02,
+        "endpoint_solid_fraction_threshold": 0.9,
+        "center_solid_fraction_curve": [
+          {"time_s": 0.0, "center_solid_fraction": 0.1},
+          {"time_s": 2.0, "center_solid_fraction": 0.3},
+          {"time_s": 6.0, "center_solid_fraction": 0.8},
+          {"time_s": 10.0, "center_solid_fraction": 1.0}
+        ]
+      },
+      "expected_json": {
+        "solidification_end_time_s": 8.0,
+        "solidification_end_position_m": 0.16,
+        "equipment_status": "inside_machine",
+        "exit_center_solid_fraction": 1.0
+      },
+      "tolerance_json": {"time_s": 1e-12, "position_m": 1e-12, "solid_fraction": 1e-12},
+      "source_ref": "Hand-computable piecewise-linear threshold interpolation",
+      "source_url": null,
+      "within_domain": true,
+      "metadata": {"independent_reference": "manual arithmetic"}
+    },
+    {
+      "benchmark_id": "F006-LINEAR-BEYOND-EXIT-V1",
+      "dataset_id": "DS_F006_ENDPOINT_BENCH_V1",
+      "model_code": "F006",
+      "machine_configuration_id": "F006_BENCH_SHORT_008M_V1",
+      "reference_type": "EQUIPMENT_BOUNDARY_IDENTITY",
+      "input_json": {
+        "casting_speed_m_s": 0.02,
+        "endpoint_solid_fraction_threshold": 0.8,
+        "center_solid_fraction_curve": [
+          {"time_s": 0.0, "center_solid_fraction": 0.0},
+          {"time_s": 5.0, "center_solid_fraction": 0.5},
+          {"time_s": 10.0, "center_solid_fraction": 1.0}
+        ]
+      },
+      "expected_json": {
+        "solidification_end_time_s": 8.0,
+        "solidification_end_position_m": 0.16,
+        "equipment_status": "beyond_machine_exit",
+        "exit_center_solid_fraction": 0.4
+      },
+      "tolerance_json": {"time_s": 1e-12, "position_m": 1e-12, "solid_fraction": 1e-12},
+      "source_ref": "Hand-computable equipment-exit interpolation and boundary comparison",
+      "source_url": null,
+      "within_domain": true,
+      "metadata": {"independent_reference": "manual arithmetic"}
+    }
+  ]
+}

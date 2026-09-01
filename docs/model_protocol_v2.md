@@ -222,15 +222,15 @@
 
 ```json
 {
-  "registered_count": 44,
-  "runtime_tool_count": 44,
-  "catalog_coverage_count": 40,
-  "qualified_executable_count": 44,
-  "implementation_qualified_count": 44,
-  "data_required_count": 20,
-  "data_qualified_count": 20,
-  "interface_qualified_count": 44,
-  "fully_eligible_count": 44
+  "registered_count": 45,
+  "runtime_tool_count": 45,
+  "catalog_coverage_count": 41,
+  "qualified_executable_count": 45,
+  "implementation_qualified_count": 45,
+  "data_required_count": 21,
+  "data_qualified_count": 21,
+  "interface_qualified_count": 45,
+  "fully_eligible_count": 45
 }
 ```
 

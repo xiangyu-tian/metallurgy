@@ -12,6 +12,7 @@ from scheil import simulate_scheil_solidification
 from scipy.linalg import solve_banded
 
 from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, ModelResult, OutputField
+from .repositories.casting_endpoint_repository import approved_machine_configuration
 from .repositories.casting_thermal_repository import (
     approved_property_model,
     boundary_profile,
@@ -1170,7 +1171,12 @@ class F005_OneDimensionalShellGrowth(BaseModelTool):
         InputField("output_points", "历史输出点数上限", "integer", required=False, default=11, unit="1", min_value=2, max_value=51),
     ]
     output_fields = [
-        OutputField("time_history", "温度与坯壳历史", "array", "time:s; position:m; temperature:K; shell:m; energy:J/m^2"),
+        OutputField(
+            "time_history",
+            "温度、中心固相率与坯壳历史",
+            "array",
+            "time:s; position:m; temperature:K; center_solid_fraction:1; shell:m; energy:J/m^2",
+        ),
         OutputField("final_temperature_profile", "最终温度/固相率剖面", "array", "x:m; temperature:K; solid_fraction:1"),
         OutputField("shell_thickness_m", "最终坯壳厚度", "number", "m", nullable=True),
         OutputField("shell_status", "坯壳结果状态", "string"),
@@ -1485,6 +1491,9 @@ class F005_OneDimensionalShellGrowth(BaseModelTool):
                 "axial_position_m": 0.0,
                 "surface_temperature_k": initial_surface,
                 "center_temperature_k": initial_temperature,
+                "center_solid_fraction": (
+                    None if initial_fraction is None else float(initial_fraction[-1])
+                ),
                 "shell_thickness_m": initial_shell,
                 "cumulative_removed_heat_j_m2": 0.0,
                 "stored_energy_change_j_m2": 0.0,
@@ -1566,12 +1575,15 @@ class F005_OneDimensionalShellGrowth(BaseModelTool):
                 cumulative_removed += step_removed
                 current_time += dt
                 if step in capture_steps or step == step_count:
-                    _, _, shell = solid_state(temperature, surface_temperature)
+                    fractions, _, shell = solid_state(temperature, surface_temperature)
                     time_history.append({
                         "time_s": current_time,
                         "axial_position_m": casting_speed * current_time,
                         "surface_temperature_k": surface_temperature,
                         "center_temperature_k": float(temperature[-1]),
+                        "center_solid_fraction": (
+                            None if fractions is None else float(fractions[-1])
+                        ),
                         "shell_thickness_m": shell,
                         "cumulative_removed_heat_j_m2": cumulative_removed,
                         "stored_energy_change_j_m2": cumulative_stored,
@@ -1645,3 +1657,448 @@ class F005_OneDimensionalShellGrowth(BaseModelTool):
             return ModelResult(False, error=str(exc), error_code="INVALID_INPUT")
         except Exception as exc:
             return ModelResult(False, error=f"一维焓法求解失败: {exc}", error_code="NUMERICAL_ERROR")
+
+
+class F006_SolidificationEndPrediction(BaseModelTool):
+    """Locate the first centre-solid-fraction threshold and map it to strand position."""
+
+    model_id, name, version = "F006", "凝固终点预测", "1.0.0"
+    tool_name = "metallurgy_predict_solidification_end"
+    scenario = "凝固与连铸"
+    priority = "P1"
+    status = qualification_status = "qualified"
+    count_eligible = True
+    model_type = "确定性物理后处理/中心固相率阈值事件定位"
+    data_requirement = "VERSIONED_DATABASE_REFERENCE"
+    data_access_mode = "database_repository"
+    required_dataset_ids = ["DS_F006_ENDPOINT_BENCH_V1"]
+    database_tables = ["metallurgy_v2.casting_machine_configuration"]
+    description = (
+        "校验F005产生的中心固相率时间曲线，定位首次达到给定阈值的时刻，"
+        "用分段线性插值和z=v*t计算凝固终点，并依据批准的连铸机配置判断终点在设备内、"
+        "设备出口或设备外。首版是物理阈值路径，不是DS042回归代理，也不输出统计置信区间。"
+    )
+    applicable_boundary = (
+        "适用于拉速恒定、中心固相率曲线单调不减且覆盖设备出口时刻的一次F005后处理；"
+        "验证用合成设备配置不得用于工程设计、生产控制或报警。真实设备调用必须先导入"
+        "具有授权、版本和批准用途域的设备配置。"
+    )
+    required_data = [
+        "F005上游执行ID及其time_history中的time_s和center_solid_fraction",
+        "PostgreSQL中批准的设备配置、有效冶金长度和拉速范围",
+        "显式凝固终点中心固相率阈值",
+    ]
+    data_source = [
+        "PostgreSQL metallurgy_v2.casting_machine_configuration",
+        "项目生成、可手算的分段线性事件定位基准",
+    ]
+    source_version = (
+        "P1-W5C-CASTING-ENDPOINT-2026.09-v1; "
+        "first-threshold-piecewise-linear-v1"
+    )
+    formula_reference = (
+        "Find first fs_center(t)>=fs_threshold; for fs0<threshold<fs1, "
+        "t*=t0+(threshold-fs0)*(t1-t0)/(fs1-fs0); z*=v_cast*t*"
+    )
+    source_records = [
+        {
+            "source_id": "DS_F006_ENDPOINT_BENCH_V1",
+            "name": "F006 solidification-end event-location benchmarks",
+            "version": "2026.09-v1",
+            "table": "metallurgy_v2.casting_machine_configuration",
+        }
+    ]
+    failure_modes = [
+        "上游执行ID为空或不是F005执行ID",
+        "设备配置缺失、未批准或其用途域不允许本次计算用途",
+        "拉速超出设备配置批准范围",
+        "曲线少于2点、字段异常、时间非严格递增、固相率越界或非单调",
+        "曲线未达到终点固相率阈值，或未覆盖设备出口时刻",
+    ]
+    independent_validation = [
+        "线性曲线交点与手算插值恒等式一致",
+        "轴向位置严格满足z=v*t",
+        "提高终点固相率阈值不得使预测终点提前",
+        "在同一分段直线上加密曲线后交点保持不变",
+        "设备出口中心固相率由独立的时间插值计算",
+        "设备内外状态与批准的有效冶金长度直接比较",
+    ]
+    dependencies = ["F005"]
+    relations = [
+        {
+            "type": "consumes_output_from",
+            "target": "F005",
+            "description": "F006消费F005的中心固相率时间曲线和执行ID，但独立完成阈值事件插值及设备边界判断。",
+        },
+        {
+            "type": "overlaps_with",
+            "target": "F004",
+            "description": "两者都返回固相率相关结果；F004计算温度—固相率曲线，F006定位中心液芯消失的时间和轴向位置。",
+        },
+    ]
+    input_fields = [
+        InputField(
+            "machine_configuration_id",
+            "批准设备配置ID",
+            "string",
+            description="必须存在于PostgreSQL且is_approved=true",
+        ),
+        InputField(
+            "calculation_purpose",
+            "计算用途",
+            "select",
+            enum=["validation", "engineering"],
+            description="合成数学基准配置只允许validation",
+        ),
+        InputField(
+            "upstream_execution_id",
+            "F005上游执行ID",
+            "string",
+            description="必须是实际F005调用返回的EXEC-执行编号",
+        ),
+        InputField(
+            "casting_speed_m_s",
+            "拉坯速度",
+            "number",
+            unit="m/s",
+            min_value=1e-8,
+            max_value=1.0,
+        ),
+        InputField(
+            "endpoint_solid_fraction_threshold",
+            "终点中心固相率阈值",
+            "number",
+            unit="1",
+            min_value=0.0,
+            max_value=1.0,
+            description="必须满足0<阈值<=1",
+        ),
+        InputField(
+            "center_solid_fraction_curve",
+            "中心固相率时间曲线",
+            "array",
+            unit="time:s; center_solid_fraction:1",
+            min_items=2,
+            max_items=2001,
+            description="按时间严格递增、固相率单调不减的F005输出子集",
+            items={
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "time_s": {
+                        "type": "number",
+                        "minimum": 0,
+                        "description": "自F005计算起点的时间；单位: s",
+                    },
+                    "center_solid_fraction": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1,
+                        "description": "铸坯中心固相率；单位: 1",
+                    },
+                },
+                "required": ["time_s", "center_solid_fraction"],
+            },
+        ),
+    ]
+    output_fields = [
+        OutputField("solidification_end_time_s", "凝固终点时间", "number", "s"),
+        OutputField("solidification_end_position_m", "凝固终点位置", "number", "m"),
+        OutputField("endpoint_solid_fraction_threshold", "终点固相率阈值", "number", "1"),
+        OutputField("interpolation_left_point", "插值左点", "object"),
+        OutputField("interpolation_right_point", "插值右点", "object"),
+        OutputField("time_resolution_s", "交点时间分辨率", "number", "s"),
+        OutputField("position_resolution_m", "交点位置分辨率", "number", "m"),
+        OutputField("position_interval_m", "交点包围位置区间", "array", "m"),
+        OutputField("equipment_status", "设备边界状态", "string"),
+        OutputField("effective_metallurgical_length_m", "有效冶金长度", "number", "m"),
+        OutputField("machine_exit_time_s", "设备出口对应时间", "number", "s"),
+        OutputField("exit_center_solid_fraction", "设备出口中心固相率", "number", "1"),
+        OutputField("curve_point_count", "曲线点数", "integer", "1"),
+        OutputField("upstream_execution_id", "F005上游执行ID", "string"),
+        OutputField("machine_configuration_id", "设备配置ID", "string"),
+        OutputField("machine_configuration_version", "设备配置版本", "string"),
+        OutputField("calculation_purpose", "计算用途", "string"),
+        OutputField("algorithm_version", "算法版本", "string"),
+    ]
+    validation_rules = [
+        {"rule": "approved_database_machine_configuration_only"},
+        {"rule": "strictly_increasing_time_and_monotone_fraction"},
+        {"rule": "curve_must_cross_threshold_and_cover_machine_exit"},
+        {"rule": "position_is_casting_speed_times_time"},
+        {"rule": "benchmark_configuration_rejects_engineering_use"},
+    ]
+
+    _LINEAR_CURVE = [
+        {"time_s": 0.0, "center_solid_fraction": 0.0},
+        {"time_s": 5.0, "center_solid_fraction": 0.5},
+        {"time_s": 10.0, "center_solid_fraction": 1.0},
+    ]
+    _COMMON = {
+        "calculation_purpose": "validation",
+        "upstream_execution_id": "EXEC-000000000000F005",
+        "casting_speed_m_s": 0.02,
+    }
+    qualification_cases = [
+        {
+            "id": "F006-N1",
+            "kind": "normal",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+                "endpoint_solid_fraction_threshold": 0.8,
+                "center_solid_fraction_curve": _LINEAR_CURVE,
+            },
+        },
+        {
+            "id": "F006-N2",
+            "kind": "normal",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+                "endpoint_solid_fraction_threshold": 0.9,
+                "center_solid_fraction_curve": [
+                    {"time_s": 0.0, "center_solid_fraction": 0.1},
+                    {"time_s": 2.0, "center_solid_fraction": 0.3},
+                    {"time_s": 6.0, "center_solid_fraction": 0.8},
+                    {"time_s": 10.0, "center_solid_fraction": 1.0},
+                ],
+            },
+        },
+        {
+            "id": "F006-N3",
+            "kind": "normal",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_SHORT_008M_V1",
+                "endpoint_solid_fraction_threshold": 0.8,
+                "center_solid_fraction_curve": _LINEAR_CURVE,
+            },
+        },
+        {
+            "id": "F006-B1",
+            "kind": "boundary",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+                "endpoint_solid_fraction_threshold": 0.5,
+                "center_solid_fraction_curve": _LINEAR_CURVE,
+            },
+        },
+        {
+            "id": "F006-F1",
+            "kind": "failure",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+                "endpoint_solid_fraction_threshold": 0.95,
+                "center_solid_fraction_curve": [
+                    {"time_s": 0.0, "center_solid_fraction": 0.0},
+                    {"time_s": 10.0, "center_solid_fraction": 0.8},
+                ],
+            },
+        },
+        {
+            "id": "F006-F2",
+            "kind": "failure",
+            "input": {
+                **_COMMON,
+                "machine_configuration_id": "F006_BENCH_LONG_020M_V1",
+                "endpoint_solid_fraction_threshold": 0.8,
+                "center_solid_fraction_curve": [
+                    {"time_s": 0.0, "center_solid_fraction": 0.0},
+                    {"time_s": 5.0, "center_solid_fraction": 0.9},
+                    {"time_s": 10.0, "center_solid_fraction": 0.8},
+                ],
+            },
+        },
+    ]
+    data_qualification_cases = [
+        {"id": "F006-DATA-BENCH", "input": qualification_cases[0]["input"]}
+    ]
+
+    @staticmethod
+    def _validated_curve(raw_curve):
+        if not isinstance(raw_curve, list) or not 2 <= len(raw_curve) <= 2001:
+            raise RepositoryError("center_solid_fraction_curve必须含2至2001个点", "INVALID_INPUT")
+        curve = []
+        allowed = {"time_s", "center_solid_fraction"}
+        for index, point in enumerate(raw_curve):
+            if not isinstance(point, dict) or set(point) != allowed:
+                raise RepositoryError(
+                    f"曲线第{index}点必须且只能含time_s和center_solid_fraction",
+                    "INVALID_INPUT",
+                )
+            if isinstance(point["time_s"], bool) or isinstance(
+                point["center_solid_fraction"], bool
+            ):
+                raise RepositoryError(f"曲线第{index}点必须是数值", "INVALID_INPUT")
+            try:
+                time_s = float(point["time_s"])
+                fraction = float(point["center_solid_fraction"])
+            except (TypeError, ValueError) as exc:
+                raise RepositoryError(f"曲线第{index}点必须是数值", "INVALID_INPUT") from exc
+            if not math.isfinite(time_s) or time_s < 0:
+                raise RepositoryError("曲线时间必须是有限非负数", "INVALID_INPUT")
+            if not math.isfinite(fraction) or not 0.0 <= fraction <= 1.0:
+                raise RepositoryError("中心固相率必须是[0,1]内有限数值", "INVALID_INPUT")
+            if curve and time_s <= curve[-1]["time_s"]:
+                raise RepositoryError("曲线时间必须严格递增", "INVALID_INPUT")
+            if curve and fraction < curve[-1]["center_solid_fraction"]:
+                raise RepositoryError("中心固相率曲线必须单调不减", "INVALID_INPUT")
+            curve.append({"time_s": time_s, "center_solid_fraction": fraction})
+        return curve
+
+    @staticmethod
+    def _curve_value(curve, time_s):
+        if time_s < curve[0]["time_s"] or time_s > curve[-1]["time_s"]:
+            raise RepositoryError("中心固相率曲线未覆盖设备出口时刻", "MISSING_DATA")
+        for point in curve:
+            if math.isclose(point["time_s"], time_s, rel_tol=0.0, abs_tol=1e-12):
+                return point["center_solid_fraction"]
+        for left, right in zip(curve, curve[1:]):
+            if left["time_s"] < time_s < right["time_s"]:
+                ratio = (time_s - left["time_s"]) / (right["time_s"] - left["time_s"])
+                return left["center_solid_fraction"] + ratio * (
+                    right["center_solid_fraction"] - left["center_solid_fraction"]
+                )
+        raise RepositoryError("无法插值设备出口中心固相率", "NUMERICAL_ERROR")
+
+    @staticmethod
+    def _threshold_event(curve, threshold):
+        crossing_index = next(
+            (index for index, point in enumerate(curve)
+             if point["center_solid_fraction"] >= threshold),
+            None,
+        )
+        if crossing_index is None:
+            raise RepositoryError("中心固相率曲线未达到终点阈值", "MODEL_NOT_APPLICABLE")
+        right = curve[crossing_index]
+        if crossing_index == 0 or right["center_solid_fraction"] == threshold:
+            return right["time_s"], right, right, True
+        left = curve[crossing_index - 1]
+        fraction_span = right["center_solid_fraction"] - left["center_solid_fraction"]
+        if fraction_span <= 0:
+            raise RepositoryError("终点阈值包围区间的固相率增量必须大于0", "NUMERICAL_ERROR")
+        ratio = (threshold - left["center_solid_fraction"]) / fraction_span
+        event_time = left["time_s"] + ratio * (right["time_s"] - left["time_s"])
+        return event_time, left, right, False
+
+    def invoke(self, params, context=None):
+        try:
+            configuration_id = params["machine_configuration_id"].strip()
+            purpose = params["calculation_purpose"]
+            upstream_id = params["upstream_execution_id"].strip()
+            if not configuration_id:
+                raise RepositoryError("machine_configuration_id不能为空", "INVALID_INPUT")
+            if not upstream_id:
+                raise RepositoryError("upstream_execution_id不能为空", "MISSING_DATA")
+            if not upstream_id.startswith("EXEC-"):
+                raise RepositoryError("upstream_execution_id必须是F005返回的EXEC-执行编号", "INVALID_INPUT")
+
+            speed = float(params["casting_speed_m_s"])
+            threshold = float(params["endpoint_solid_fraction_threshold"])
+            if not math.isfinite(speed) or speed <= 0:
+                raise RepositoryError("casting_speed_m_s必须是有限正数", "OUT_OF_DOMAIN")
+            if not math.isfinite(threshold) or not 0.0 < threshold <= 1.0:
+                raise RepositoryError(
+                    "endpoint_solid_fraction_threshold必须满足0<阈值<=1", "OUT_OF_DOMAIN"
+                )
+            curve = self._validated_curve(params["center_solid_fraction_curve"])
+            configuration, provenance = approved_machine_configuration(configuration_id)
+            speed_min = float(configuration["casting_speed_min_m_s"])
+            speed_max = float(configuration["casting_speed_max_m_s"])
+            if speed < speed_min or speed > speed_max:
+                raise RepositoryError(
+                    f"拉速{speed:g} m/s超出批准范围[{speed_min:g}, {speed_max:g}]",
+                    "OUT_OF_DOMAIN",
+                )
+            usage_scope = configuration["usage_scope"]
+            if purpose == "engineering" and usage_scope not in {
+                "ENGINEERING_APPROVED", "PRODUCTION_APPROVED"
+            }:
+                raise RepositoryError(
+                    f"设备配置{configuration_id}的{usage_scope}使用域不允许engineering计算",
+                    "MODEL_NOT_APPLICABLE",
+                )
+            if purpose == "validation" and usage_scope not in {
+                "MATHEMATICAL_BENCHMARK_ONLY", "REFERENCE_VALIDATION_ONLY",
+                "ENGINEERING_APPROVED", "PRODUCTION_APPROVED",
+            }:
+                raise RepositoryError("设备配置使用域不允许validation计算", "MODEL_NOT_APPLICABLE")
+
+            event_time, left, right, exact_point = self._threshold_event(curve, threshold)
+            event_position = speed * event_time
+            machine_length = float(configuration["effective_metallurgical_length_m"])
+            exit_time = machine_length / speed
+            exit_fraction = self._curve_value(curve, exit_time)
+            absolute_tolerance = 1e-12
+            if math.isclose(event_position, machine_length, rel_tol=0.0,
+                            abs_tol=absolute_tolerance):
+                equipment_status = "at_machine_exit"
+            elif event_position < machine_length:
+                equipment_status = "inside_machine"
+            else:
+                equipment_status = "beyond_machine_exit"
+
+            def enriched(point):
+                return {
+                    "time_s": point["time_s"],
+                    "center_solid_fraction": point["center_solid_fraction"],
+                    "axial_position_m": speed * point["time_s"],
+                }
+
+            left_position = speed * left["time_s"]
+            right_position = speed * right["time_s"]
+            warnings_out = []
+            if usage_scope in {"MATHEMATICAL_BENCHMARK_ONLY", "REFERENCE_VALIDATION_ONLY"}:
+                warnings_out.append(BoundaryWarning(
+                    "machine_configuration_id",
+                    f"设备配置用途域为{usage_scope}，不得用于生产控制",
+                ))
+            if exact_point:
+                warnings_out.append(BoundaryWarning(
+                    "endpoint_solid_fraction_threshold",
+                    "曲线采样点恰好达到阈值，交点包围区间退化为零宽",
+                ))
+            if equipment_status == "beyond_machine_exit":
+                warnings_out.append(BoundaryWarning(
+                    "solidification_end_position_m",
+                    "预测凝固终点超过批准的有效冶金长度",
+                    max_allowed=machine_length,
+                ))
+            elif equipment_status == "at_machine_exit":
+                warnings_out.append(BoundaryWarning(
+                    "solidification_end_position_m",
+                    "预测凝固终点位于批准的有效冶金长度边界",
+                    max_allowed=machine_length,
+                ))
+            return ModelResult(
+                True,
+                result={
+                    "solidification_end_time_s": event_time,
+                    "solidification_end_position_m": event_position,
+                    "endpoint_solid_fraction_threshold": threshold,
+                    "interpolation_left_point": enriched(left),
+                    "interpolation_right_point": enriched(right),
+                    "time_resolution_s": right["time_s"] - left["time_s"],
+                    "position_resolution_m": right_position - left_position,
+                    "position_interval_m": [left_position, right_position],
+                    "equipment_status": equipment_status,
+                    "effective_metallurgical_length_m": machine_length,
+                    "machine_exit_time_s": exit_time,
+                    "exit_center_solid_fraction": exit_fraction,
+                    "curve_point_count": len(curve),
+                    "upstream_execution_id": upstream_id,
+                    "machine_configuration_id": configuration_id,
+                    "machine_configuration_version": configuration["configuration_version"],
+                    "calculation_purpose": purpose,
+                    "algorithm_version": "first-threshold-piecewise-linear-v1",
+                },
+                boundary_check=BoundaryCheck(not warnings_out, warnings_out),
+                provenance=[provenance],
+            )
+        except RepositoryError as exc:
+            return ModelResult(False, error=str(exc), error_code=exc.error_code)
+        except (TypeError, ValueError, KeyError) as exc:
+            return ModelResult(False, error=str(exc), error_code="INVALID_INPUT")

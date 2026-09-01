@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W5C F006 isolated provider-forced function-call smoke test; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W5C-F006",
+      "model_code": "F006",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的凝固终点预测工具，不得自行计算或改选工具。设备配置ID为F006_BENCH_LONG_020M_V1，用途validation，上游F005执行ID为EXEC-000000000000F005，拉速0.02 m/s，终点中心固相率阈值0.8。中心固相率曲线依次为：(0 s, 0.0)、(5 s, 0.5)、(10 s, 1.0)。每个曲线点只填写time_s和center_solid_fraction，不得添加轴向位置、钢种、过热度、水量或隐藏默认值。",
+      "expected": [
+        {"path": "output.solidification_end_time_s", "value": 8.0, "absolute_tolerance": 1e-12},
+        {"path": "output.solidification_end_position_m", "value": 0.16, "absolute_tolerance": 1e-12},
+        {"path": "output.exit_center_solid_fraction", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.equipment_status", "value": "inside_machine"},
+        {"path": "output.upstream_execution_id", "value": "EXEC-000000000000F005"},
+        {"path": "output.machine_configuration_id", "value": "F006_BENCH_LONG_020M_V1"},
+        {"path": "output.algorithm_version", "value": "first-threshold-piecewise-linear-v1"}
+      ]
+    }
+  ]
+}

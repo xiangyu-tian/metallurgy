@@ -137,7 +137,7 @@ class P0W2BlastFurnaceToolTests(unittest.TestCase):
     def test_w2_tools_execute_through_uniform_http_contract(self):
         client = TestClient(app)
         manifest = client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 44)
+        self.assertEqual(manifest["total"], 45)
         for code in sorted(W2_IDS):
             model = self.registry.get(code)
             case = next(x for x in model.qualification_cases if x["kind"] == "normal")
