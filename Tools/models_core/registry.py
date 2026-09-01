@@ -29,17 +29,22 @@ class ModelRegistry:
         # 手动导入已知模块确保被发现
         for module_name in [
             f"{package_prefix}.models_a",
+            f"{package_prefix}.models_a_w10",
             f"{package_prefix}.models_b",
             f"{package_prefix}.models_b_p1",
             f"{package_prefix}.models_c",
             f"{package_prefix}.models_c_w9",
+            f"{package_prefix}.models_c_w10",
             f"{package_prefix}.models_t",
+            f"{package_prefix}.models_t_w10",
             f"{package_prefix}.models_d",
             f"{package_prefix}.models_d_p1",
             f"{package_prefix}.models_d_w8",
+            f"{package_prefix}.models_d_w10",
             f"{package_prefix}.models_e",
             f"{package_prefix}.models_e_w8",
             f"{package_prefix}.models_e_w9",
+            f"{package_prefix}.models_e_w10",
             f"{package_prefix}.models_f",
             f"{package_prefix}.models_g",
         ]:

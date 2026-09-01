@@ -1,0 +1,85 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W10 six isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W10-A011",
+      "model_code": "A011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的反应计量系数求解工具。reactants严格为[{formula:Fe},{formula:O2}]，products严格为[{formula:Fe2O3}]，include_charge_balance=false，不得添加其他字段。",
+      "expected": [
+        {"path": "output.reactant_coefficients.0", "value": 4},
+        {"path": "output.reactant_coefficients.1", "value": 3},
+        {"path": "output.product_coefficients.0", "value": 2},
+        {"path": "output.balanced_reaction", "value": "4 Fe + 3 O2 -> 2 Fe2O3"},
+        {"path": "output.passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W10-C011",
+      "model_code": "C011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的传递过程无量纲数工具。density_kg_m3=1.2，velocity_m_s=2，characteristic_length_m=0.1，dynamic_viscosity_pa_s=0.000018，specific_heat_j_kg_k=1005，thermal_conductivity_w_m_k=0.026，diffusivity_m2_s=0.00002。",
+      "expected": [
+        {"path": "output.reynolds_number", "value": 13333.333333333332, "absolute_tolerance": 1e-9},
+        {"path": "output.prandtl_number", "value": 0.6957692307692309, "absolute_tolerance": 1e-12},
+        {"path": "output.schmidt_number", "value": 0.75, "absolute_tolerance": 1e-12},
+        {"path": "output.mass_peclet_number", "value": 10000.0, "absolute_tolerance": 1e-10}
+      ]
+    },
+    {
+      "case_id": "LLM-W10-T003",
+      "model_code": "T003",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的集总热容瞬态温度工具。density_kg_m3=7800，specific_heat_j_kg_k=500，volume_m3=0.01，surface_area_m2=1，convection_coefficient_w_m2_k=100，thermal_conductivity_w_m_k=50，initial_temperature_k=1000，ambient_temperature_k=300，time_s=120。",
+      "expected": [
+        {"path": "output.biot_number", "value": 0.02, "absolute_tolerance": 1e-12},
+        {"path": "output.time_constant_s", "value": 390.0, "absolute_tolerance": 1e-12},
+        {"path": "output.temperature_k", "value": 814.5990364141792, "absolute_tolerance": 1e-9},
+        {"path": "output.heat_removed_j", "value": 7230637.579847012, "absolute_tolerance": 1e-5}
+      ]
+    },
+    {
+      "case_id": "LLM-W10-T004",
+      "model_code": "T004",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的多层热阻网络工具。layers严格为[{name:steel,thickness_m:0.1,conductivity_w_m_k:20}]，area_m2=2，hot_boundary_temperature_k=1000，cold_boundary_temperature_k=500，不传对流系数，contact_resistances_m2_k_w严格为空数组。",
+      "expected": [
+        {"path": "output.total_thermal_resistance_k_w", "value": 0.0025, "absolute_tolerance": 1e-12},
+        {"path": "output.heat_rate_w", "value": 200000.0, "absolute_tolerance": 1e-8},
+        {"path": "output.heat_flux_w_m2", "value": 100000.0, "absolute_tolerance": 1e-8},
+        {"path": "output.closure_residual_k", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W10-D023",
+      "model_code": "D023",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的单种合金补加工具。bath_mass_kg=100000，initial_mass_fraction=0.002，target_mass_fraction=0.005，alloy_element_mass_fraction=0.75，element_recovery_fraction=0.9，mass_basis=addition_in_final_bath_mass。",
+      "expected": [
+        {"path": "output.alloy_addition_kg", "value": 447.76119402985074, "absolute_tolerance": 1e-9},
+        {"path": "output.predicted_mass_fraction", "value": 0.005, "absolute_tolerance": 1e-12},
+        {"path": "output.mass_balance_residual_kg", "value": 0.0, "absolute_tolerance": 1e-9},
+        {"path": "output.mass_basis", "value": "addition_in_final_bath_mass"}
+      ]
+    },
+    {
+      "case_id": "LLM-W10-E021",
+      "model_code": "E021",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Boudouard反应平衡驱动力工具。temperature_k=1000，total_pressure_pa=100000，co_mole_fraction=0.6，co2_mole_fraction=0.4，carbon_activity=1，co_formation_reaction_gibbs_kj_mol=-400.2，co2_formation_reaction_gibbs_kj_mol=-396.4，co_formation_execution_id=EXEC-B008-CO-SMOKE，co2_formation_execution_id=EXEC-B008-CO2-SMOKE。",
+      "expected": [
+        {"path": "output.standard_reaction_gibbs_kj_mol", "value": -3.8, "absolute_tolerance": 1e-10},
+        {"path": "output.equilibrium_constant", "value": 1.579384081435579, "absolute_tolerance": 1e-12},
+        {"path": "output.reaction_quotient", "value": 0.9, "absolute_tolerance": 1e-12},
+        {"path": "output.direction", "value": "forward_to_CO"}
+      ]
+    }
+  ]
+}

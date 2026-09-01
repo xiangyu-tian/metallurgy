@@ -1,0 +1,82 @@
+{
+  "schema_version": "14.0.0",
+  "supersedes": "tool_catalog_crosswalk_v13.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v13.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 80,
+    "baseline_commit": "P1-W10-pending",
+    "milestone": "P1-W10"
+  },
+  "summary": {
+    "same": 63,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 3,
+    "extension": 9,
+    "catalog_entries_covered": 68,
+    "runtime_assets_preserved": 80
+  },
+  "entries": [
+    {
+      "runtime_model_code": "A011",
+      "runtime_name": "反应计量系数求解",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A002", "A006"],
+      "proposed_tool_uid": "metallurgy.extension.a011.reaction_stoichiometry_solver.v1"
+    },
+    {
+      "runtime_model_code": "C011",
+      "runtime_name": "传递过程无量纲数",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["C002", "C010", "G001", "G002"],
+      "proposed_tool_uid": "metallurgy.extension.c011.transport_dimensionless_numbers.v1"
+    },
+    {
+      "runtime_model_code": "T003",
+      "runtime_name": "集总热容瞬态温度",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["T001", "T002", "F005"],
+      "proposed_tool_uid": "metallurgy.extension.t003.lumped_transient_temperature.v1"
+    },
+    {
+      "runtime_model_code": "T004",
+      "runtime_name": "多层热阻网络",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["T001", "T002", "C009"],
+      "proposed_tool_uid": "metallurgy.extension.t004.multilayer_thermal_resistance.v1"
+    },
+    {
+      "runtime_model_code": "D023",
+      "runtime_name": "单种合金补加量",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A004", "D014", "D021"],
+      "proposed_tool_uid": "metallurgy.extension.d023.single_alloy_addition.v1"
+    },
+    {
+      "runtime_model_code": "E021",
+      "runtime_name": "Boudouard反应平衡驱动力",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["B008", "B009", "E011"],
+      "proposed_tool_uid": "metallurgy.extension.e021.boudouard_driving_force.v1"
+    }
+  ]
+}

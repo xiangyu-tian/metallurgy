@@ -39,15 +39,15 @@ class P1W9TransportBFTests(unittest.TestCase):
 
     def test_seven_tools_pass_all_gates_and_dynamic_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 74,
-            "runtime_tool_count": 74,
+            "registered_count": 80,
+            "runtime_tool_count": 80,
             "catalog_coverage_count": 68,
-            "qualified_executable_count": 74,
-            "implementation_qualified_count": 74,
+            "qualified_executable_count": 80,
+            "implementation_qualified_count": 80,
             "data_required_count": 30,
             "data_qualified_count": 30,
-            "interface_qualified_count": 74,
-            "fully_eligible_count": 74,
+            "interface_qualified_count": 80,
+            "fully_eligible_count": 80,
         })
         for code in W9_IDS:
             with self.subTest(code=code):
@@ -178,7 +178,7 @@ class P1W9TransportBFTests(unittest.TestCase):
 
     def test_schema_http_forced_routes_and_keyword_recall_for_each_tool(self):
         manifest = self.client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 74)
+        self.assertEqual(manifest["total"], 80)
         self.assertEqual(manifest["catalog_coverage_count"], 68)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         queries = {

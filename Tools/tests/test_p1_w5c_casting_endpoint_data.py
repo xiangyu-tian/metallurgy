@@ -72,15 +72,15 @@ class P1W5CCastingEndpointDataTests(unittest.TestCase):
         registry = ModelRegistry()
         registry.discover()
         self.assertEqual(registry.get_counts(), {
-            "registered_count": 74,
-            "runtime_tool_count": 74,
+            "registered_count": 80,
+            "runtime_tool_count": 80,
             "catalog_coverage_count": 68,
-            "qualified_executable_count": 74,
-            "implementation_qualified_count": 74,
+            "qualified_executable_count": 80,
+            "implementation_qualified_count": 80,
             "data_required_count": 30,
             "data_qualified_count": 30,
-            "interface_qualified_count": 74,
-            "fully_eligible_count": 74,
+            "interface_qualified_count": 80,
+            "fully_eligible_count": 80,
         })
 
     def test_asset_is_versioned_project_generated_and_excludes_ds042(self):

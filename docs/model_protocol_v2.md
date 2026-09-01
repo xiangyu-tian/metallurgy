@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖P1-W9完成后的74个已注册且最终合格工具，表格主能力目录严格覆盖68项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖P1-W10完成后的80个已注册且最终合格工具，表格主能力目录严格覆盖68项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -310,19 +310,19 @@
 
 ```json
 {
-  "registered_count": 74,
-  "runtime_tool_count": 74,
+  "registered_count": 80,
+  "runtime_tool_count": 80,
   "catalog_coverage_count": 68,
-  "qualified_executable_count": 74,
-  "implementation_qualified_count": 74,
+  "qualified_executable_count": 80,
+  "implementation_qualified_count": 80,
   "data_required_count": 30,
   "data_qualified_count": 30,
-  "interface_qualified_count": 74,
-  "fully_eligible_count": 74
+  "interface_qualified_count": 80,
+  "fully_eligible_count": 80
 }
 ```
 
-这些值由注册中心实时计算，不得在运行时代码中写死。当前30个数据必需型工具均通过数据库Repository执行并返回记录级溯源；D007复用既有IUPAC C原子量记录。P1-W9没有数据库写入或迁移，C009/C010/E006/E007/E009/E012/E014均为显式输入公式/守恒工具，不内置企业参数。数据后端不可用、参数集缺失或超批准域时均失败关闭。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前30个数据必需型工具均通过数据库Repository执行并返回记录级溯源；D007复用既有IUPAC C原子量记录。P1-W10没有数据库写入或迁移，A011/C011/T003/T004/D023/E021均为显式输入公式工具；E021要求携带两个B008执行结果和执行编号，不复制热力学数据资产。数据后端不可用、参数集缺失或超批准域时均失败关闭。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -334,6 +334,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前74工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
+测试包含原17个黄金种子回归、原30项资产保留、当前80工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。
