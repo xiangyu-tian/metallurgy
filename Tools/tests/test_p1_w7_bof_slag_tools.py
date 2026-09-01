@@ -41,15 +41,15 @@ class P1W7BofSlagToolTests(unittest.TestCase):
 
     def test_seven_tools_pass_all_gates_and_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 93,
-            "runtime_tool_count": 93,
-            "catalog_coverage_count": 75,
-            "qualified_executable_count": 93,
-            "implementation_qualified_count": 93,
-            "data_required_count": 32,
-            "data_qualified_count": 32,
-            "interface_qualified_count": 93,
-            "fully_eligible_count": 93,
+            "registered_count": 97,
+            "runtime_tool_count": 97,
+            "catalog_coverage_count": 79,
+            "qualified_executable_count": 97,
+            "implementation_qualified_count": 97,
+            "data_required_count": 33,
+            "data_qualified_count": 33,
+            "interface_qualified_count": 97,
+            "fully_eligible_count": 97,
         })
         for code in W7_IDS:
             with self.subTest(code=code):
@@ -244,8 +244,8 @@ class P1W7BofSlagToolTests(unittest.TestCase):
 
     def test_schema_http_and_local_forced_routes_for_each_tool(self):
         manifest = self.client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 93)
-        self.assertEqual(manifest["catalog_coverage_count"], 75)
+        self.assertEqual(manifest["total"], 97)
+        self.assertEqual(manifest["catalog_coverage_count"], 79)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         for code in sorted(W7_IDS):
             payload = normal_payload(self.registry, code)

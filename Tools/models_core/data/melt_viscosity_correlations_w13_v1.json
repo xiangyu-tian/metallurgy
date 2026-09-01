@@ -1,0 +1,72 @@
+{
+  "asset_id": "MELT-VISCOSITY-CORRELATIONS-W13-V1",
+  "dataset_id": "DS_MELT_VISCOSITY_W13",
+  "name": "Public melt-viscosity correlation definitions for C008",
+  "version": "2026.09-v1",
+  "provider": "Urbain/Vargas and Hirai literature transcription",
+  "license": "bibliographic equation data; preserve source attribution",
+  "retrieved_at": "2026-09-01 00:00:00",
+  "models": [
+    {
+      "model_id": "URBAIN_SLAG_1981",
+      "material_kind": "slag",
+      "equation_type": "URBAIN_WEYMANN",
+      "temperature_min_k": 1400.0,
+      "temperature_max_k": 2000.0,
+      "parameters": {
+        "b0": [13.8, 39.9355, -44.049],
+        "b1": [30.481, -117.1505, 129.9978],
+        "b2": [-40.9429, 234.0486, -300.04],
+        "b3": [60.7619, -153.9276, 211.1616],
+        "ln_a_intercept": -11.57,
+        "ln_a_b_slope": -0.29,
+        "activation_scale_k": 1000.0
+      },
+      "component_groups": {
+        "glass_former": {"SiO2": 1.0},
+        "modifier": {"CaO": 1.0, "MgO": 1.0},
+        "amphoteric": {"Al2O3": 1.0}
+      },
+      "applicability": {
+        "composition_basis": "normalized oxide mole fraction converted from wt%",
+        "required_components": ["SiO2", "Al2O3", "CaO", "MgO"],
+        "allowed_components": ["SiO2", "Al2O3", "CaO", "MgO"],
+        "composition_sum_tolerance_wt_pct": 0.001,
+        "phase_requirement": "fully liquid homogeneous silicate slag",
+        "warning": "Do not apply below liquidus or to solid-bearing slag."
+      },
+      "source_version": "URBAIN-1981-VARGAS-2001-TRANSCRIPTION-V1",
+      "source_ref": "Urbain et al., Trans. J. Br. Ceram. Soc. 80 (1981) 139-141; equations transcribed in Vargas et al., Prog. Energy Combust. Sci. 27 (2001) 237-429",
+      "source_url": "https://doi.org/10.1002/srin.198701513",
+      "is_approved": true
+    },
+    {
+      "model_id": "HIRAI_LIQUID_ALLOY_1993",
+      "material_kind": "liquid_metal",
+      "equation_type": "HIRAI_ARRHENIUS",
+      "temperature_min_k": 300.0,
+      "temperature_max_k": 5000.0,
+      "parameters": {
+        "universal_prefactor": 1.7e-7,
+        "activation_factor": 2.65,
+        "liquidus_exponent": 1.27,
+        "gas_constant_j_mol_k": 8.3144
+      },
+      "component_groups": {},
+      "applicability": {
+        "temperature_to_liquidus_ratio_min": 1.0,
+        "temperature_to_liquidus_ratio_max": 1.5,
+        "density_min_kg_m3": 1000.0,
+        "density_max_kg_m3": 20000.0,
+        "molar_mass_min_kg_mol": 0.01,
+        "molar_mass_max_kg_mol": 0.25,
+        "phase_requirement": "fully liquid metal or alloy",
+        "warning": "Density, liquidus temperature and mean molar mass must describe the same alloy basis."
+      },
+      "source_version": "HIRAI-ISIJ-1993-TRANSCRIPTION-V1",
+      "source_ref": "M. Hirai, Estimation of Viscosities of Liquid Alloys, ISIJ International 33 (1993) 251-258",
+      "source_url": "https://doi.org/10.2355/isijinternational.33.251",
+      "is_approved": true
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+{
+  "schema_version": "17.0.0",
+  "supersedes": "tool_catalog_crosswalk_v16.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v16.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 97,
+    "baseline_commit": "P1-W13-pending",
+    "milestone": "P1-W13"
+  },
+  "summary": {
+    "same": 74,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 79,
+    "runtime_assets_preserved": 97
+  },
+  "entries": [
+    {
+      "runtime_model_code": "C008",
+      "runtime_name": "熔渣/液态金属黏度估算",
+      "catalog_id": "C008",
+      "catalog_name": "熔渣/金属黏度",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B003", "B023", "C009"],
+      "proposed_tool_uid": "metallurgy.catalog.c008.melt_viscosity.v1"
+    },
+    {
+      "runtime_model_code": "D018",
+      "runtime_name": "BOF静态分阶段吹氧优化",
+      "catalog_id": "D018",
+      "catalog_name": "吹氧制度优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D001", "D002", "D007", "D016"],
+      "proposed_tool_uid": "metallurgy.catalog.d018.bof_blowing_schedule_optimization.v1"
+    },
+    {
+      "runtime_model_code": "D019",
+      "runtime_name": "多合金最小成本补加优化",
+      "catalog_id": "D019",
+      "catalog_name": "合金加入优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A004", "D022", "D023"],
+      "proposed_tool_uid": "metallurgy.catalog.d019.alloy_addition_optimization.v1"
+    },
+    {
+      "runtime_model_code": "D020",
+      "runtime_name": "冷却剂/废钢静态加入优化",
+      "catalog_id": "D020",
+      "catalog_name": "冷却剂/废钢优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B003", "D002", "D005"],
+      "proposed_tool_uid": "metallurgy.catalog.d020.coolant_scrap_optimization.v1"
+    }
+  ]
+}

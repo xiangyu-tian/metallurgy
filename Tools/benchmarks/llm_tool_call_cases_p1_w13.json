@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W13 four isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W13-C008",
+      "model_code": "C008",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的熔渣/液态金属黏度估算工具。correlation_id=URBAIN_SLAG_1981，temperature_k=1773.15，composition_wt_pct={SiO2:40,Al2O3:15,CaO:35,MgO:10}。",
+      "expected": [
+        {"path": "output.dynamic_viscosity_pa_s", "value": 6.055883388913573, "absolute_tolerance": 1e-10},
+        {"path": "output.correlation_id", "value": "URBAIN_SLAG_1981"},
+        {"path": "output.dataset_id", "value": "DS_MELT_VISCOSITY_W13"},
+        {"path": "output.algorithm_version", "value": "c008-melt-viscosity-db-v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W13-D018",
+      "model_code": "D018",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的BOF静态分段供氧制度优化工具。总氧量120 Nm3，early/middle/finish三段固定流量30/20/15 Nm3/min，时长1到3 min，期望占比0.5/0.3/0.2，权重1/1/2，枪位1.8/1.5/1.3 m，氧利用率0.82/0.90/0.94。",
+      "expected": [
+        {"path": "output.total_oxygen_nm3", "value": 120.0, "absolute_tolerance": 1e-12},
+        {"path": "output.weighted_l1_deviation_nm3", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.oxygen_closure_residual_nm3", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.algorithm_version", "value": "d018-static-stage-l1-lp-v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W13-D019",
+      "model_code": "D019",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的多合金最小成本补加优化工具。钢液1000 kg、当前Mn=0.5 wt%，目标Mn=1.0到1.1 wt%；FeMn80成本2、范围0到20 kg、Mn=80 wt%、Mn收得率0.9、质量保留率1；总加入上限20 kg。",
+      "expected": [
+        {"path": "output.total_addition_kg", "value": 7.04225352112676, "absolute_tolerance": 1e-10},
+        {"path": "output.final_composition_wt_pct.Mn", "value": 1.0, "absolute_tolerance": 1e-10},
+        {"path": "output.max_constraint_violation_wt_pct", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.algorithm_version", "value": "d019-final-mass-milp-v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W13-D020",
+      "model_code": "D020",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的冷却剂/废钢静态加入优化工具。钢浴100000 kg、有效比热0.8 kJ/(kg*K)、当前1900 K、目标1850到1870 K；scrap冷却1.2 MJ/kg成本0.45上限3000 kg，ore冷却2.0 MJ/kg成本0.5上限2000 kg，总加入上限5000 kg。",
+      "expected": [
+        {"path": "output.achieved_heat_removal_mj", "value": 2400.0, "absolute_tolerance": 1e-9},
+        {"path": "output.predicted_final_temperature_k", "value": 1870.0, "absolute_tolerance": 1e-9},
+        {"path": "output.total_cost", "value": 600.0, "absolute_tolerance": 1e-9},
+        {"path": "output.algorithm_version", "value": "d020-static-heat-milp-v1"}
+      ]
+    }
+  ]
+}
