@@ -1,8 +1,7 @@
-"""Contract tests for preserving 45 runtime assets while using the workbook as catalog."""
+"""Contract tests for preserving 49 runtime assets while using the workbook as catalog."""
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 import unittest
@@ -12,25 +11,20 @@ TOOLS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, TOOLS_DIR)
 
 from models_core import ModelRegistry
-
-
-CROSSWALK_PATH = os.path.join(
-    TOOLS_DIR, "models_core", "data", "tool_catalog_crosswalk_v8.json"
-)
+from models_core.catalog import load_catalog_crosswalk
 
 
 class ToolCatalogCrosswalkTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        with open(CROSSWALK_PATH, "r", encoding="utf-8") as handle:
-            cls.crosswalk = json.load(handle)
+        cls.crosswalk = load_catalog_crosswalk()
         cls.registry = ModelRegistry()
         cls.registry.discover()
 
     def test_all_current_runtime_assets_are_preserved_once(self):
         mapped = [entry["runtime_model_code"] for entry in self.crosswalk["entries"]]
         registered = [entry["model_code"] for entry in self.registry.list_models()]
-        self.assertEqual(len(mapped), 45)
+        self.assertEqual(len(mapped), 49)
         self.assertEqual(len(mapped), len(set(mapped)))
         self.assertEqual(set(mapped), set(registered))
 
@@ -68,8 +62,8 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
 
     def test_registry_exposes_dual_identity_and_dual_counts(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["runtime_tool_count"], 45)
-        self.assertEqual(counts["catalog_coverage_count"], 41)
+        self.assertEqual(counts["runtime_tool_count"], 49)
+        self.assertEqual(counts["catalog_coverage_count"], 45)
 
         oxygen = self.registry.get("A007")
         self.assertEqual(oxygen.catalog_id, "A006")
@@ -91,9 +85,9 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
         variant = self.registry.get("C003")
         self.assertIsNone(variant.catalog_id)
         self.assertFalse(variant.catalog_coverage)
-        self.assertIsNone(
-            self.registry.get_by_catalog_id("C003", fully_eligible_only=False)
-        )
+        numerical = self.registry.get_by_catalog_id("C003", fully_eligible_only=False)
+        self.assertEqual(numerical.model_id, "C103")
+        self.assertEqual(numerical.tool_uid, "metallurgy.catalog.c003.fick_1d_numerical.v1")
 
         charge = self.registry.get_by_catalog_id("A007", fully_eligible_only=False)
         self.assertEqual(charge.model_id, "A101")

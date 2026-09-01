@@ -1,0 +1,62 @@
+{
+  "schema_version": "9.0.0",
+  "supersedes": "tool_catalog_crosswalk_v8.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v8.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 49,
+    "baseline_commit": "P1-W6A-pending",
+    "milestone": "P1-W6A"
+  },
+  "summary": {
+    "same": 40,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 1,
+    "extension": 3,
+    "catalog_entries_covered": 45,
+    "runtime_assets_preserved": 49
+  },
+  "entries": [
+    {
+      "runtime_model_code": "C103",
+      "runtime_name": "一维 Fick 数值扩散",
+      "catalog_id": "C003",
+      "catalog_name": "一维扩散方程求解",
+      "mapping_status": "catalog_equivalent_different_runtime_code",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C002"],
+      "proposed_tool_uid": "metallurgy.catalog.c003.fick_1d_numerical.v1"
+    },
+    {
+      "runtime_model_code": "C005",
+      "runtime_name": "正常晶粒长大动力学",
+      "catalog_id": "C005",
+      "catalog_name": "晶粒长大动力学",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C001", "C004"],
+      "proposed_tool_uid": "metallurgy.catalog.c005.grain_growth.v1"
+    },
+    {
+      "runtime_model_code": "C006",
+      "runtime_name": "球形颗粒缩核反应",
+      "catalog_id": "C006",
+      "catalog_name": "缩核模型",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C001"],
+      "proposed_tool_uid": "metallurgy.catalog.c006.shrinking_core.v1"
+    },
+    {
+      "runtime_model_code": "C007",
+      "runtime_name": "抛物线氧化动力学",
+      "catalog_id": "C007",
+      "catalog_name": "氧化动力学",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C001"],
+      "proposed_tool_uid": "metallurgy.catalog.c007.parabolic_oxidation.v1"
+    }
+  ]
+}

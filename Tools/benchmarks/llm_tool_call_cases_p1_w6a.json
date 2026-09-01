@@ -1,0 +1,63 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W6A C103/C005/C006/C007 isolated provider-forced function-call smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W6A-C103",
+      "model_code": "C103",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的一维Fick数值扩散工具，不得自行计算。域长0.01 m，3个网格，总时长10 s，时间步1 s，初始浓度数组[1,1,1]，浓度单位为无量纲1；从0到10 s使用常数扩散系数1e-8 m2/s；左右均为zero_flux；扩散参数来源写qualification-uniform，版本v1。不要添加定浓度边界值或其他字段。",
+      "expected": [
+        {"path": "output.final_concentrations.0", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.final_concentrations.1", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.initial_inventory", "value": 0.01, "absolute_tolerance": 1e-12},
+        {"path": "output.final_inventory", "value": 0.01, "absolute_tolerance": 1e-12},
+        {"path": "output.time_steps", "value": 10},
+        {"path": "output.diffusivity_source", "value": "qualification-uniform"}
+      ]
+    },
+    {
+      "case_id": "LLM-W6A-C005",
+      "model_code": "C005",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的晶粒长大工具。初始晶粒直径10e-6 m，长大指数2，指前因子2e-14 m^n/s，激活能0 J/mol；温程仅一段：900 K保温100 s；参数来源P1-W6A algebraic benchmark，版本v1。不得自行计算或补材料默认值。",
+      "expected": [
+        {"path": "output.final_grain_diameter_m", "value": 0.000010099504938362078, "absolute_tolerance": 1e-16},
+        {"path": "output.integrated_growth_term_m_power", "value": 2e-12, "absolute_tolerance": 1e-22},
+        {"path": "output.total_time_s", "value": 100.0, "absolute_tolerance": 1e-12},
+        {"path": "output.formula_residual_m_power", "value": 0.0, "absolute_tolerance": 1e-22},
+        {"path": "output.parameter_version", "value": "v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W6A-C006",
+      "model_code": "C006",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的球形颗粒缩核工具。颗粒半径0.001 m，固体摩尔密度50000 mol/m3，气相反应物浓度10 mol/m3，每摩尔气体A对应固体B的化学计量数为1 mol B/mol A，反应10 s；只启用膜传质，膜传质系数0.01 m/s，不得填写表面反应常数和产物层扩散系数；参数来源P1-W6A film-control benchmark，版本v1。",
+      "expected": [
+        {"path": "output.conversion_fraction", "value": 0.06, "absolute_tolerance": 1e-12},
+        {"path": "output.complete_conversion_time_s", "value": 166.66666666666666, "absolute_tolerance": 1e-10},
+        {"path": "output.film_time_contribution_s", "value": 10.0, "absolute_tolerance": 1e-10},
+        {"path": "output.surface_reaction_time_contribution_s", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.dominant_resistance", "value": "film_mass_transfer"}
+      ]
+    },
+    {
+      "case_id": "LLM-W6A-C007",
+      "model_code": "C007",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的抛物线氧化工具。温度1200 K，时间3600 s，抛物线速率常数1e-10 kg2/(m4*s)，初始单位面积增重0 kg/m2，氧化物密度5000 kg/m3，氧化剂在氧化物中的质量分数0.25，已确认机制protective_parabolic；参数来源P1-W6A parabolic-law benchmark，版本v1。不得改用线性氧化。",
+      "expected": [
+        {"path": "output.mass_gain_kg_m2", "value": 0.0006, "absolute_tolerance": 1e-15},
+        {"path": "output.parabolic_increment_kg2_m4", "value": 3.6e-7, "absolute_tolerance": 1e-18},
+        {"path": "output.equivalent_oxide_thickness_m", "value": 4.8e-7, "absolute_tolerance": 1e-18},
+        {"path": "output.formula_residual_kg2_m4", "value": 0.0, "absolute_tolerance": 1e-18},
+        {"path": "output.observed_regime", "value": "protective_parabolic"}
+      ]
+    }
+  ]
+}

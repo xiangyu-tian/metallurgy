@@ -14,13 +14,37 @@ from pathlib import Path
 from typing import Any, Dict
 
 
-CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v8.json"
+CROSSWALK_PATH = Path(__file__).with_name("data") / "tool_catalog_crosswalk_v9.json"
+
+
+def _load_crosswalk_asset(path: Path, seen: set[Path] | None = None) -> Dict[str, Any]:
+    """Load a reviewed crosswalk, optionally expressed as a delta over an immutable base."""
+    resolved = path.resolve()
+    seen = set() if seen is None else set(seen)
+    if resolved in seen:
+        raise ValueError("工具目录交叉映射base_asset形成循环")
+    seen.add(resolved)
+    with resolved.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    base_asset = payload.get("base_asset")
+    if not base_asset:
+        return payload
+    base_path = resolved.parent / base_asset
+    if base_path.parent.resolve() != resolved.parent:
+        raise ValueError("工具目录交叉映射base_asset必须位于同一数据目录")
+    base = _load_crosswalk_asset(base_path, seen)
+    merged = dict(base)
+    for key, value in payload.items():
+        if key not in {"entries", "base_asset"}:
+            merged[key] = value
+    merged["entries"] = list(base.get("entries", [])) + list(payload.get("entries", []))
+    merged["base_asset"] = base_asset
+    return merged
 
 
 @lru_cache(maxsize=1)
 def load_catalog_crosswalk() -> Dict[str, Any]:
-    with CROSSWALK_PATH.open("r", encoding="utf-8") as handle:
-        payload = json.load(handle)
+    payload = _load_crosswalk_asset(CROSSWALK_PATH)
     entries = payload.get("entries", [])
     runtime_codes = [entry.get("runtime_model_code") for entry in entries]
     expected_count = payload.get("runtime_registry", {}).get("registered_count_at_baseline")
