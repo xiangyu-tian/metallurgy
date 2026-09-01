@@ -1,4 +1,4 @@
-"""Contract tests for preserving 49 runtime assets while using the workbook as catalog."""
+"""Contract tests for preserving 53 runtime assets while using the workbook as catalog."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
     def test_all_current_runtime_assets_are_preserved_once(self):
         mapped = [entry["runtime_model_code"] for entry in self.crosswalk["entries"]]
         registered = [entry["model_code"] for entry in self.registry.list_models()]
-        self.assertEqual(len(mapped), 49)
+        self.assertEqual(len(mapped), 53)
         self.assertEqual(len(mapped), len(set(mapped)))
         self.assertEqual(set(mapped), set(registered))
 
@@ -62,8 +62,8 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
 
     def test_registry_exposes_dual_identity_and_dual_counts(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["runtime_tool_count"], 49)
-        self.assertEqual(counts["catalog_coverage_count"], 45)
+        self.assertEqual(counts["runtime_tool_count"], 53)
+        self.assertEqual(counts["catalog_coverage_count"], 49)
 
         oxygen = self.registry.get("A007")
         self.assertEqual(oxygen.catalog_id, "A006")
@@ -120,6 +120,22 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
         self.assertEqual(
             endpoint.tool_uid,
             "metallurgy.catalog.f006.solidification_end_prediction.v1",
+        )
+        self.assertEqual(
+            self.registry.get_by_catalog_id("B012", fully_eligible_only=False).model_id,
+            "B012",
+        )
+        self.assertEqual(
+            self.registry.get_by_catalog_id("B013", fully_eligible_only=False).model_id,
+            "B013",
+        )
+        self.assertEqual(
+            self.registry.get_by_catalog_id("B016", fully_eligible_only=False).model_id,
+            "B016",
+        )
+        self.assertEqual(
+            self.registry.get_by_catalog_id("B017", fully_eligible_only=False).model_id,
+            "B017",
         )
 
     def test_llm_definition_contains_catalog_identity(self):

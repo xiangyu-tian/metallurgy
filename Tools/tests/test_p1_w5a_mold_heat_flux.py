@@ -73,15 +73,15 @@ class P1W5AMoldHeatFluxTests(unittest.TestCase):
         self.assertEqual(
             self.registry.get_counts(),
             {
-                "registered_count": 49,
-                "runtime_tool_count": 49,
-                "catalog_coverage_count": 45,
-                "qualified_executable_count": 49,
-                "implementation_qualified_count": 49,
-                "data_required_count": 21,
-                "data_qualified_count": 21,
-                "interface_qualified_count": 49,
-                "fully_eligible_count": 49,
+                "registered_count": 53,
+                "runtime_tool_count": 53,
+                "catalog_coverage_count": 49,
+                "qualified_executable_count": 53,
+                "implementation_qualified_count": 53,
+                "data_required_count": 23,
+                "data_qualified_count": 23,
+                "interface_qualified_count": 53,
+                "fully_eligible_count": 53,
             },
         )
         model = self.registry.get("F007")
@@ -243,7 +243,7 @@ class P1W5AMoldHeatFluxTests(unittest.TestCase):
         manifest_response = self.client.get("/api/v1/tools")
         self.assertEqual(manifest_response.status_code, 200)
         manifest = manifest_response.json()
-        self.assertEqual(manifest["total"], 49)
+        self.assertEqual(manifest["total"], 53)
         definition = next(item for item in manifest["tools"] if item["model_code"] == "F007")
         self.assertEqual(definition["function"]["name"], "metallurgy_calc_mold_heat_flux")
         self.assertEqual(definition["catalog_id"], "F007")

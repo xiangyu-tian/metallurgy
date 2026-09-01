@@ -193,7 +193,10 @@ def _normalize_reaction(value: str) -> str:
 
 def reaction_properties(reaction: str, dataset_id: str = "DS002") -> tuple[dict[str, Any], list[Provenance]]:
     with _cursor() as cur:
-        cur.execute("SELECT reaction_id,reaction_equation FROM metallurgy_v2.reaction_definition ORDER BY reaction_id")
+        cur.execute(
+            """SELECT reaction_id,reaction_equation,reactants,products
+               FROM metallurgy_v2.reaction_definition ORDER BY reaction_id"""
+        )
         definitions = [dict(row) for row in cur.fetchall()]
     target = _normalize_reaction(reaction)
     definition = next((row for row in definitions if _normalize_reaction(row["reaction_equation"]) == target), None)
@@ -215,7 +218,17 @@ def reaction_properties(reaction: str, dataset_id: str = "DS002") -> tuple[dict[
     required = {"DELTA_H_STD", "DELTA_S_STD"}
     if not required.issubset(values):
         raise RepositoryError("反应热化学记录缺少ΔH或ΔS", "MISSING_DATA")
-    return {"reaction":definition["reaction_equation"],"reaction_id":definition["reaction_id"],**values,"temperature_min_k":float(rows[0]["temperature_min_k"]),"temperature_max_k":float(rows[0]["temperature_max_k"]),"source_ref":rows[0]["source_ref"],"source_version":rows[0]["source_version"]}, [_provenance(row, "metallurgy_v2.reaction_property") for row in rows]
+    return {
+        "reaction": definition["reaction_equation"],
+        "reaction_id": definition["reaction_id"],
+        "reactants": list(definition["reactants"]),
+        "products": list(definition["products"]),
+        **values,
+        "temperature_min_k": float(rows[0]["temperature_min_k"]),
+        "temperature_max_k": float(rows[0]["temperature_max_k"]),
+        "source_ref": rows[0]["source_ref"],
+        "source_version": rows[0]["source_version"],
+    }, [_provenance(row, "metallurgy_v2.reaction_property") for row in rows]
 
 
 def process_parameters(codes: Iterable[str], parameter_set_id: str = "BOF_ENGINEERING_BASELINE_V1") -> tuple[dict[str, float], list[Provenance]]:

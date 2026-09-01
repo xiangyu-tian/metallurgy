@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖P1-W5A完成后的43个已注册且最终合格工具，表格主能力目录覆盖39项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖P1-W6B完成后的53个已注册且最终合格工具，表格主能力目录覆盖49项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -134,6 +134,50 @@
 
 数学基准和NIST参考物性集只允许 `calculation_purpose=validation`，不得用于生产控制。数据库记录缺失、温度越出相关式范围、边界与物性集不匹配、F007执行ID缺失或非线性求解不收敛均显式失败，不使用JSON常数或默认钢种回退。
 
+#### B012绝热反应温度调用约束
+
+函数名为 `metallurgy_calculate_adiabatic_reaction_temperature`。反应式必须匹配数据库登记反应；`feed_moles` 的键必须带相态，例如 `C(s)`、`O2(g)`。不得由大模型补反应焓、热容或默认惰性气体。求根温区必须显式给出；相变六项参数要么全部省略，要么全部提供来源和版本。
+
+```json
+{
+  "arguments": {
+    "reaction": "C + O₂ → CO₂",
+    "feed_moles": {"C(s)": 1, "O2(g)": 1, "N2(g)": 3.76},
+    "initial_temperature_k": 298.15,
+    "conversion_fraction": 1,
+    "temperature_lower_k": 298.15,
+    "temperature_upper_k": 3500
+  }
+}
+```
+
+数据库无反应/热物性记录、转化后出现负物质的量、温区未括住能量零点或能量残差超限均失败关闭。当前公式是固定反应进度的绝热定压能量衡算，不是化学平衡或燃烧动力学模型。
+
+#### B013理想气体混合平衡调用约束
+
+函数名为 `metallurgy_solve_ideal_gas_equilibrium`。调用者必须显式给出完整候选气体集合、初始物质的量、温度和压力；物种键必须带 `(g)`。大模型不得自行删减可能生成的候选物种，也不得把凝聚相或无NASA7记录的物种加入首版求解。
+
+```json
+{
+  "arguments": {
+    "candidate_species": ["CO(g)", "H2O(g)", "CO2(g)", "H2(g)"],
+    "initial_moles": {"CO(g)": 1, "H2O(g)": 1},
+    "temperature_k": 1000,
+    "pressure_pa": 100000
+  }
+}
+```
+
+结果只有同时满足求解器收敛、逐元素守恒和总Gibbs能不升三个闸门才成功。当前范围为200–3500 K、最多12种中性理想气体和8种元素，不处理真实气体逸度、离子或凝聚相。
+
+#### B016/B017溶液参数调用约束
+
+`B016` 函数名为 `metallurgy_calculate_redlich_kister_activity`；`B017` 函数名为 `metallurgy_convert_henry_raoult_standard_state`。两项都禁止内置或由大模型猜测合金参数，每次调用必须显式传入 `parameter_source` 与 `parameter_version`。
+
+- B016仅接受恰好两个组元和按 `L0,L1,...` 排列的 `interaction_parameters_j_mol`；首版系数视为给定温度常数。
+- B017的 `conversion_mode=gamma_infinite` 时必须给 `gamma_infinite`；取 `henry_over_pure_fugacity` 时必须同时给同为Pa的 `henry_constant_pa` 与 `pure_component_fugacity_pa`。
+- B017在溶质摩尔分数大于0.1时返回超稀释域警告；它只变换标准态，不拟合Henry常数。
+
 ### `POST /api/v1/models/{model_code}/validate`
 
 请求：
@@ -222,19 +266,19 @@
 
 ```json
 {
-  "registered_count": 49,
-  "runtime_tool_count": 49,
-  "catalog_coverage_count": 45,
-  "qualified_executable_count": 49,
-  "implementation_qualified_count": 49,
-  "data_required_count": 21,
-  "data_qualified_count": 21,
-  "interface_qualified_count": 49,
-  "fully_eligible_count": 49
+  "registered_count": 53,
+  "runtime_tool_count": 53,
+  "catalog_coverage_count": 49,
+  "qualified_executable_count": 53,
+  "implementation_qualified_count": 53,
+  "data_required_count": 23,
+  "data_qualified_count": 23,
+  "interface_qualified_count": 53,
+  "fully_eligible_count": 53
 }
 ```
 
-这些值由注册中心实时计算，不得在运行时代码中写死。当前20个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F005读取版本化连铸热物性和边界记录，F007为显式输入的公式工具。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前23个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F005读取版本化连铸热物性和边界记录，B012/B013读取现有热化学/NASA7记录，F007及B016/B017为显式输入的公式工具。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -246,6 +290,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前44工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
+测试包含原17个黄金种子回归、原30项资产保留、当前53工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。

@@ -30,6 +30,7 @@ class ModelRegistry:
         for module_name in [
             f"{package_prefix}.models_a",
             f"{package_prefix}.models_b",
+            f"{package_prefix}.models_b_p1",
             f"{package_prefix}.models_c",
             f"{package_prefix}.models_t",
             f"{package_prefix}.models_d",

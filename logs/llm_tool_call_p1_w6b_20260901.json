@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0.0",
+  "created_at": "2026-09-01T04:12:23.297461+00:00",
+  "purpose": "P1-W6B B012/B013/B016/B017 isolated provider-forced function-call smoke tests; not a research dataset",
+  "provider_model": "deepseek-v4-flash",
+  "tool_manifest_total": 53,
+  "passed": 4,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "LLM-W6B-B012",
+      "model_code": "B012",
+      "function_name": "metallurgy_calculate_adiabatic_reaction_temperature",
+      "arguments": {
+        "reaction": "C + O₂ → CO₂",
+        "feed_moles": {
+          "C(s)": 1,
+          "O2(g)": 1,
+          "N2(g)": 3.76
+        },
+        "initial_temperature_k": 298.15,
+        "conversion_fraction": 1,
+        "temperature_lower_k": 298.15,
+        "temperature_upper_k": 3500
+      },
+      "execution_id": "EXEC-2EA45285EFDE49BA",
+      "tool_uid": "metallurgy.catalog.b012.adiabatic_reaction_temperature.v1",
+      "catalog_id": "B012",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 6,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 3898.14
+    },
+    {
+      "case_id": "LLM-W6B-B013",
+      "model_code": "B013",
+      "function_name": "metallurgy_solve_ideal_gas_equilibrium",
+      "arguments": {
+        "candidate_species": [
+          "CO(g)",
+          "H2O(g)",
+          "CO2(g)",
+          "H2(g)"
+        ],
+        "initial_moles": {
+          "CO(g)": 1,
+          "H2O(g)": 1
+        },
+        "temperature_k": 1000,
+        "pressure_pa": 100000
+      },
+      "execution_id": "EXEC-2F6EE359FEA947A1",
+      "tool_uid": "metallurgy.catalog.b013.ideal_gas_equilibrium.v1",
+      "catalog_id": "B013",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 6,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 1718.93
+    },
+    {
+      "case_id": "LLM-W6B-B016",
+      "model_code": "B016",
+      "function_name": "metallurgy_calculate_redlich_kister_activity",
+      "arguments": {
+        "compositions": {
+          "A": 0.3,
+          "B": 0.7
+        },
+        "temperature_k": 1000,
+        "interaction_parameters_j_mol": [
+          10000
+        ],
+        "parameter_source": "P1-W6B regular-solution identity",
+        "parameter_version": "v1"
+      },
+      "execution_id": "EXEC-8424281012D44627",
+      "tool_uid": "metallurgy.catalog.b016.redlich_kister_excess_gibbs.v1",
+      "catalog_id": "B016",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 6,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 2288.63
+    },
+    {
+      "case_id": "LLM-W6B-B017",
+      "model_code": "B017",
+      "function_name": "metallurgy_convert_henry_raoult_standard_state",
+      "arguments": {
+        "solute": "C in liquid Fe",
+        "solute_mole_fraction": 0.01,
+        "temperature_k": 1873,
+        "raoult_activity_coefficient": 20,
+        "conversion_mode": "gamma_infinite",
+        "gamma_infinite": 25,
+        "parameter_source": "P1-W6B algebraic identity",
+        "parameter_version": "v1"
+      },
+      "execution_id": "EXEC-81B5A1123DEA46E9",
+      "tool_uid": "metallurgy.catalog.b017.henry_raoult_standard_state.v1",
+      "catalog_id": "B017",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 6,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 2438.35
+    }
+  ]
+}

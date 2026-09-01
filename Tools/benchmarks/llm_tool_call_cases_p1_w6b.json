@@ -1,0 +1,66 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W6B B012/B013/B016/B017 isolated provider-forced function-call smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W6B-B012",
+      "model_code": "B012",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的绝热反应温度工具，不得自行计算。反应式严格写为C + O₂ → CO₂；反应前物种量对象为C(s)=1 mol、O2(g)=1 mol、N2(g)=3.76 mol；初温298.15 K，限制反应物转化率1，求根下界298.15 K、上界3500 K。没有相变，不得添加任何phase_transition字段或其他字段。",
+      "expected": [
+        {"path": "output.adiabatic_temperature_k", "value": 2476.1113351515814, "absolute_tolerance": 1e-6},
+        {"path": "output.reaction_extent_mol", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.final_moles.CO2(g)", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.final_moles.N2(g)", "value": 3.76, "absolute_tolerance": 1e-12},
+        {"path": "output.reaction_enthalpy_term_kj", "value": -393.5, "absolute_tolerance": 1e-10},
+        {"path": "output.energy_balance_residual_kj", "value": 0.0, "absolute_tolerance": 1e-7}
+      ]
+    },
+    {
+      "case_id": "LLM-W6B-B013",
+      "model_code": "B013",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的理想气体混合平衡工具，不得自行求平衡。候选物种数组严格按CO(g)、H2O(g)、CO2(g)、H2(g)排列；初始物质的量对象只含CO(g)=1 mol和H2O(g)=1 mol；温度1000 K，总压力100000 Pa。不要添加迭代次数、容差或其他字段。",
+      "expected": [
+        {"path": "output.equilibrium_moles.CO(g)", "value": 0.4549455041235639, "absolute_tolerance": 1e-7},
+        {"path": "output.equilibrium_moles.CO2(g)", "value": 0.5450544958764362, "absolute_tolerance": 1e-7},
+        {"path": "output.final_element_totals_mol.C", "value": 1.0, "absolute_tolerance": 1e-9},
+        {"path": "output.final_element_totals_mol.H", "value": 2.0, "absolute_tolerance": 1e-9},
+        {"path": "output.gibbs_decrease_kj", "value": 13.096559665976656, "absolute_tolerance": 1e-5},
+        {"path": "output.converged", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W6B-B016",
+      "model_code": "B016",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Redlich-Kister工具。二元摩尔组成对象A=0.3、B=0.7，温度1000 K，interaction_parameters_j_mol数组只含L0=10000 J/mol；parameter_source严格写P1-W6B regular-solution identity，parameter_version严格写v1。不得添加标准化学势或其他字段。",
+      "expected": [
+        {"path": "output.excess_gibbs_j_mol", "value": 2100.0, "absolute_tolerance": 1e-10},
+        {"path": "output.partial_molar_excess_gibbs_j_mol.A", "value": 4900.0, "absolute_tolerance": 1e-9},
+        {"path": "output.partial_molar_excess_gibbs_j_mol.B", "value": 900.0, "absolute_tolerance": 1e-9},
+        {"path": "output.activity_coefficients.A", "value": 1.8027883320908107, "absolute_tolerance": 1e-12},
+        {"path": "output.gibbs_duhem_closure_residual_j_mol", "value": 0.0, "absolute_tolerance": 1e-10},
+        {"path": "output.parameter_version", "value": "v1"}
+      ]
+    },
+    {
+      "case_id": "LLM-W6B-B017",
+      "model_code": "B017",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Henry/Raoult标准态切换工具。solute严格写C in liquid Fe，溶质摩尔分数0.01，温度1873 K，Raoult标准态活度系数20；conversion_mode严格写gamma_infinite，gamma_infinite=25；parameter_source严格写P1-W6B algebraic identity，parameter_version严格写v1。不得填写Henry常数、纯组元逸度或其他字段。",
+      "expected": [
+        {"path": "output.gamma_infinite", "value": 25.0, "absolute_tolerance": 1e-12},
+        {"path": "output.henry_activity_coefficient", "value": 0.8, "absolute_tolerance": 1e-12},
+        {"path": "output.raoult_activity", "value": 0.2, "absolute_tolerance": 1e-12},
+        {"path": "output.henry_activity", "value": 0.008, "absolute_tolerance": 1e-12},
+        {"path": "output.standard_chemical_potential_shift_kj_mol", "value": 50.12751615145799, "absolute_tolerance": 1e-10},
+        {"path": "output.chemical_potential_invariance_residual_kj_mol", "value": 0.0, "absolute_tolerance": 1e-10}
+      ]
+    }
+  ]
+}
