@@ -1,0 +1,179 @@
+{
+  "schema_version": "1.0.0",
+  "created_at": "2026-09-01T04:55:46.251392+00:00",
+  "purpose": "P1-W7 D005/D006/D010-D014 isolated provider-forced function-call smoke tests; not a research dataset",
+  "provider_model": "deepseek-v4-flash",
+  "tool_manifest_total": 60,
+  "passed": 7,
+  "failed": 0,
+  "results": [
+    {
+      "case_id": "LLM-W7-D005",
+      "model_code": "D005",
+      "function_name": "metallurgy_estimate_bof_slag_mass",
+      "arguments": {
+        "oxidized_element_masses_kg": {
+          "Si": 28.085
+        },
+        "oxide_product_formulas": {
+          "Si": "SiO2"
+        }
+      },
+      "execution_id": "EXEC-6C41D05970AE4D97",
+      "tool_uid": "metallurgy.catalog.d005.bof_slag_mass.v1",
+      "catalog_id": "D005",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 2000.37
+    },
+    {
+      "case_id": "LLM-W7-D006",
+      "model_code": "D006",
+      "function_name": "metallurgy_calculate_slag_basicity",
+      "arguments": {
+        "component_masses_kg": {
+          "CaO": 40,
+          "SiO2": 20
+        },
+        "definition": "R2_CaO_SiO2"
+      },
+      "execution_id": "EXEC-1E79664359794C75",
+      "tool_uid": "metallurgy.catalog.d006.slag_basicity.v1",
+      "catalog_id": "D006",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 1903.83
+    },
+    {
+      "case_id": "LLM-W7-D010",
+      "model_code": "D010",
+      "function_name": "metallurgy_predict_phosphorus_partition",
+      "arguments": {
+        "calculation_purpose": "reference_validation",
+        "temperature_k": 1873,
+        "slag_composition_mass_percent": {
+          "CaO": 45,
+          "MgO": 8,
+          "P2O5": 2,
+          "Al2O3": 3,
+          "SiO2": 15
+        },
+        "tfe_mass_percent": 20,
+        "metal_mass_kg": 1000,
+        "slag_mass_kg": 100,
+        "initial_metal_p_mass_percent": 0.1
+      },
+      "execution_id": "EXEC-72F4995E51414640",
+      "tool_uid": "metallurgy.catalog.d010.phosphorus_partition.v1",
+      "catalog_id": "D010",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 2435.23
+    },
+    {
+      "case_id": "LLM-W7-D011",
+      "model_code": "D011",
+      "function_name": "metallurgy_predict_sulfur_partition",
+      "arguments": {
+        "calculation_purpose": "reference_validation",
+        "temperature_k": 1773,
+        "slag_component_masses_kg": {
+          "CaO": 45,
+          "SiO2": 35,
+          "Al2O3": 15,
+          "MgO": 5
+        },
+        "oxygen_activity": 0.001,
+        "sulfur_activity_coefficient": 1,
+        "metal_mass_kg": 1000,
+        "slag_mass_kg": 100,
+        "initial_metal_s_mass_percent": 0.05
+      },
+      "execution_id": "EXEC-9B02A8060058474D",
+      "tool_uid": "metallurgy.catalog.d011.sulfur_partition.v1",
+      "catalog_id": "D011",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 3248.11
+    },
+    {
+      "case_id": "LLM-W7-D012",
+      "model_code": "D012",
+      "function_name": "metallurgy_calculate_manganese_oxidation_equilibrium",
+      "arguments": {
+        "calculation_purpose": "reference_validation",
+        "temperature_k": 1823.15,
+        "mno_activity": 0.2,
+        "feo_activity": 0.4,
+        "mn_activity_coefficient": 1,
+        "initial_mn_mass_percent": 0.5,
+        "metal_mass_kg": 1000
+      },
+      "execution_id": "EXEC-7ABE545B0A8F4B82",
+      "tool_uid": "metallurgy.catalog.d012.manganese_oxidation.v1",
+      "catalog_id": "D012",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 3006.94
+    },
+    {
+      "case_id": "LLM-W7-D013",
+      "model_code": "D013",
+      "function_name": "metallurgy_calculate_silicon_oxidation_equilibrium",
+      "arguments": {
+        "calculation_purpose": "reference_validation",
+        "temperature_k": 1700,
+        "sio2_activity": 0.2,
+        "feo_activity": 0.4,
+        "si_activity_coefficient": 1,
+        "initial_si_mass_percent": 0.5,
+        "metal_mass_kg": 1000
+      },
+      "execution_id": "EXEC-D998F852C3264CB1",
+      "tool_uid": "metallurgy.catalog.d013.silicon_oxidation.v1",
+      "catalog_id": "D013",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 3749.46
+    },
+    {
+      "case_id": "LLM-W7-D014",
+      "model_code": "D014",
+      "function_name": "metallurgy_estimate_tfe_iron_loss",
+      "arguments": {
+        "slag_mass_kg": 100,
+        "iron_species_mass_fractions": {
+          "FeO": 0.2
+        },
+        "steel_tapped_mass_kg": 1000
+      },
+      "execution_id": "EXEC-ABEA2AE27F074C87",
+      "tool_uid": "metallurgy.catalog.d014.tfe_iron_loss.v1",
+      "catalog_id": "D014",
+      "status": "passed",
+      "provider_tool_choice_forced": true,
+      "provider_thinking_mode": "disabled",
+      "expected_checks": 4,
+      "roundtrip_identity_echoed": true,
+      "runtime_ms": 2244.27
+    }
+  ]
+}

@@ -1,0 +1,225 @@
+{
+  "asset_id": "P1-W7-BOF-SLAG-MODELS-2026.09-v1",
+  "asset_version": "2026.09-v1",
+  "normalization": {
+    "temperature": "K",
+    "mass_composition": "mass percent unless explicitly marked activity",
+    "logarithm": "base 10",
+    "standard_state": "source-specific and recorded per parameter set"
+  },
+  "datasets": [
+    {
+      "dataset_id": "DS_BOF_P_PARTITION_ISIJ_2016",
+      "name": "BOF phosphorus partition correlation reported by Spooner et al.",
+      "category": "冶金公开实验关联",
+      "provider": "ISIJ International / J-STAGE",
+      "license": "CC BY-NC-ND 4.0; factual coefficients stored with attribution for non-commercial research validation",
+      "access_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2016-361",
+      "ingestion_mode": "reviewed equation-parameter transcription",
+      "version": "ISIJINT-2016-361 Eq.6 snapshot",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "B",
+      "lineage_json": {
+        "source_location": "Eq.6",
+        "purpose": "reference validation and engineering screening only",
+        "plant_control_approved": false,
+        "restricted_ds042_imported": false
+      }
+    },
+    {
+      "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013",
+      "name": "Multicomponent slag sulfide-capacity optical-basicity model",
+      "category": "冶金公开实验关联",
+      "provider": "ISIJ International / J-STAGE",
+      "license": "CC BY-NC-ND 4.0; factual coefficients stored with attribution for non-commercial research validation",
+      "access_url": "https://doi.org/10.2355/isijinternational.53.761",
+      "ingestion_mode": "reviewed equation-parameter transcription",
+      "version": "ISIJ International 53 (2013) 761 Eq.10/Table 2 snapshot",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "B",
+      "lineage_json": {
+        "source_location": "Eq.10 and Table 2",
+        "purpose": "reference validation and engineering screening only",
+        "plant_control_approved": false,
+        "restricted_ds042_imported": false
+      }
+    },
+    {
+      "dataset_id": "DS_S_DISTRIBUTION_ISIJ_2016",
+      "name": "Sulfur partition relation from sulfide capacity",
+      "category": "冶金公开实验关联",
+      "provider": "ISIJ International / J-STAGE",
+      "license": "CC BY-NC-ND 4.0; factual coefficients stored with attribution for non-commercial research validation",
+      "access_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2016-274",
+      "ingestion_mode": "reviewed equation-parameter transcription",
+      "version": "ISIJINT-2016-274 Eq.7-8 snapshot",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "B",
+      "lineage_json": {
+        "source_location": "Eq.7 and Eq.8",
+        "purpose": "reference validation and engineering screening only",
+        "plant_control_approved": false,
+        "restricted_ds042_imported": false
+      }
+    },
+    {
+      "dataset_id": "DS_MN_EQUILIBRIUM_ISIJ_1963",
+      "name": "FeO-MnO/liquid-iron manganese equilibrium",
+      "category": "冶金公开实验关联",
+      "provider": "Tetsu-to-Hagane / J-STAGE",
+      "license": "CC BY-NC-ND 4.0; factual coefficients stored with attribution for non-commercial research validation",
+      "access_url": "https://doi.org/10.2355/tetsutohagane1955.49.5_756",
+      "ingestion_mode": "reviewed equation-parameter transcription",
+      "version": "Tetsu-to-Hagane 49 (1963) 756 liquid-standard-state v1",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "B",
+      "lineage_json": {
+        "source_location": "abstract result 4, log K_Mn(l)",
+        "purpose": "reference validation and engineering screening only",
+        "plant_control_approved": false,
+        "restricted_ds042_imported": false
+      }
+    },
+    {
+      "dataset_id": "DS_SI_EQUILIBRIUM_ISIJ_2017",
+      "name": "Si-SiO2-FeO slag-metal equilibrium constant",
+      "category": "冶金公开实验关联",
+      "provider": "ISIJ International / J-STAGE",
+      "license": "CC BY-NC-ND 4.0; factual coefficients stored with attribution for non-commercial research validation",
+      "access_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2017-147",
+      "ingestion_mode": "reviewed equation-parameter transcription",
+      "version": "ISIJINT-2017-147 Eq.5 snapshot",
+      "retrieved_at": "2026-09-01 00:00:00",
+      "checksum": null,
+      "owner": "metallurgy-tools",
+      "security_level": "公开",
+      "quality_grade": "B",
+      "lineage_json": {
+        "source_location": "Eq.2 and Eq.5",
+        "purpose": "reference validation and engineering screening only",
+        "source_process": "electroslag remelting; not a BOF plant calibration",
+        "plant_control_approved": false,
+        "restricted_ds042_imported": false
+      }
+    }
+  ],
+  "parameter_sets": [
+    {
+      "parameter_set_id": "D010_SPOONER_ISIJ_2016_V1",
+      "model_code": "D010",
+      "temperature_min_k": 1600.0,
+      "temperature_max_k": 2000.0,
+      "usage_scope": "ENGINEERING_SCREENING_ONLY",
+      "applicability": {
+        "formula_basis": "slag oxide and TFe mass percent",
+        "implementation_guard": "1600-2000 K conservative BOF screening interval",
+        "equilibrium_only": true,
+        "plant_control_approved": false
+      },
+      "parameters": [
+        {"parameter_code": "CAO_COEFF", "parameter_value": 0.06, "unit": "1/mass_percent"},
+        {"parameter_code": "MGO_COEFF", "parameter_value": 0.0222, "unit": "1/mass_percent"},
+        {"parameter_code": "P2O5_COEFF", "parameter_value": 0.279, "unit": "1/mass_percent"},
+        {"parameter_code": "AL2O3_COEFF", "parameter_value": -0.003, "unit": "1/mass_percent"},
+        {"parameter_code": "SIO2_COEFF", "parameter_value": -0.012, "unit": "1/mass_percent"},
+        {"parameter_code": "INV_T_COEFF", "parameter_value": 11570.0, "unit": "K"},
+        {"parameter_code": "INTERCEPT", "parameter_value": -10.52, "unit": "1"},
+        {"parameter_code": "TFE_EXPONENT", "parameter_value": 2.5, "unit": "1"}
+      ],
+      "dataset_id": "DS_BOF_P_PARTITION_ISIJ_2016",
+      "source_version": "ISIJINT-2016-361-EQ6-v1",
+      "source_ref": "Spooner et al., ISIJ International 56 (2016), Eq.6",
+      "source_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2016-361"
+    },
+    {
+      "parameter_set_id": "D011_ZHANG_MA_ISIJ_V1",
+      "model_code": "D011",
+      "temperature_min_k": 1773.0,
+      "temperature_max_k": 1923.0,
+      "usage_scope": "ENGINEERING_SCREENING_ONLY",
+      "applicability": {
+        "supported_components": ["CaO", "MgO", "Al2O3", "SiO2", "FeO", "MnO", "TiO2", "CaF2"],
+        "formula_basis": "oxide mole amount weighted by oxygen stoichiometry; CaF2 uses oxygen-equivalent 1",
+        "equilibrium_only": true,
+        "plant_control_approved": false
+      },
+      "parameters": [
+        {"parameter_code": "CS_INTERCEPT", "parameter_value": -6.08, "unit": "1", "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013"},
+        {"parameter_code": "CS_INV_LAMBDA", "parameter_value": 4.49, "unit": "1", "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013"},
+        {"parameter_code": "CS_INV_T", "parameter_value": 15893.0, "unit": "K", "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013"},
+        {"parameter_code": "CS_INV_LAMBDA_INV_T", "parameter_value": -15864.0, "unit": "K", "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013"},
+        {"parameter_code": "LOGK5_INV_T", "parameter_value": -420.0, "unit": "K", "dataset_id": "DS_S_DISTRIBUTION_ISIJ_2016", "source_ref": "Ma et al., ISIJ International 56 (2016), Eq.7-8", "source_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2016-274", "source_version": "ISIJINT-2016-274-EQ7-8-v1"},
+        {"parameter_code": "LOGK5_INTERCEPT", "parameter_value": 1.14, "unit": "1", "dataset_id": "DS_S_DISTRIBUTION_ISIJ_2016", "source_ref": "Ma et al., ISIJ International 56 (2016), Eq.7-8", "source_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2016-274", "source_version": "ISIJINT-2016-274-EQ7-8-v1"},
+        {"parameter_code": "OPTICAL_BASICITY_CAO", "parameter_value": 1.0, "unit": "1", "metadata": {"component_formula": "CaO", "oxygen_equivalent": 1}},
+        {"parameter_code": "OPTICAL_BASICITY_MGO", "parameter_value": 0.78, "unit": "1", "metadata": {"component_formula": "MgO", "oxygen_equivalent": 1}},
+        {"parameter_code": "OPTICAL_BASICITY_AL2O3", "parameter_value": 0.61, "unit": "1", "metadata": {"component_formula": "Al2O3", "oxygen_equivalent": 3}},
+        {"parameter_code": "OPTICAL_BASICITY_SIO2", "parameter_value": 0.48, "unit": "1", "metadata": {"component_formula": "SiO2", "oxygen_equivalent": 2}},
+        {"parameter_code": "OPTICAL_BASICITY_FEO", "parameter_value": 1.24, "unit": "1", "metadata": {"component_formula": "FeO", "oxygen_equivalent": 1}},
+        {"parameter_code": "OPTICAL_BASICITY_MNO", "parameter_value": 1.43, "unit": "1", "metadata": {"component_formula": "MnO", "oxygen_equivalent": 1}},
+        {"parameter_code": "OPTICAL_BASICITY_TIO2", "parameter_value": 0.61, "unit": "1", "metadata": {"component_formula": "TiO2", "oxygen_equivalent": 2}},
+        {"parameter_code": "OPTICAL_BASICITY_CAF2", "parameter_value": 0.88, "unit": "1", "metadata": {"component_formula": "CaF2", "oxygen_equivalent": 1}}
+      ],
+      "dataset_id": "DS_SLAG_S_CAPACITY_ISIJ_2013",
+      "source_version": "ISIJ-53-761-EQ10-TABLE2-v1",
+      "source_ref": "Zhang, Chou and Uday, ISIJ International 53 (2013), Eq.10 and Table 2",
+      "source_url": "https://doi.org/10.2355/isijinternational.53.761"
+    },
+    {
+      "parameter_set_id": "D012_GUNJI_MATOBA_LIQUID_V1",
+      "model_code": "D012",
+      "temperature_min_k": 1823.15,
+      "temperature_max_k": 1936.15,
+      "usage_scope": "REFERENCE_VALIDATION_ONLY",
+      "applicability": {
+        "reaction": "(FeO)+[Mn]=(MnO)+[Fe]",
+        "oxide_standard_state": "liquid",
+        "metal_standard_state": "1 mass percent Henry for Mn",
+        "fixed_slag_activities": true,
+        "plant_control_approved": false
+      },
+      "parameters": [
+        {"parameter_code": "LOGK_A", "parameter_value": 6440.0, "unit": "K"},
+        {"parameter_code": "LOGK_B", "parameter_value": -2.83, "unit": "1"}
+      ],
+      "dataset_id": "DS_MN_EQUILIBRIUM_ISIJ_1963",
+      "source_version": "TETSU-49-5-756-LIQUID-v1",
+      "source_ref": "Gunji and Matoba, Tetsu-to-Hagane 49 (1963), abstract result 4",
+      "source_url": "https://doi.org/10.2355/tetsutohagane1955.49.5_756"
+    },
+    {
+      "parameter_set_id": "D013_DONG_ISIJ_2017_V1",
+      "model_code": "D013",
+      "temperature_min_k": 1700.0,
+      "temperature_max_k": 2000.0,
+      "usage_scope": "REFERENCE_VALIDATION_ONLY",
+      "applicability": {
+        "reaction": "[Si]+2(FeO)=(SiO2)+2[Fe]",
+        "slag_activity_basis": "mass-action concentration or equivalent dimensionless activity",
+        "metal_standard_state": "1 mass percent Henry for Si",
+        "fixed_slag_activities": true,
+        "source_process": "ESR reference; not a BOF plant calibration",
+        "plant_control_approved": false
+      },
+      "parameters": [
+        {"parameter_code": "LOGK_A", "parameter_value": 18100.0, "unit": "K"},
+        {"parameter_code": "LOGK_B", "parameter_value": -6.372, "unit": "1"}
+      ],
+      "dataset_id": "DS_SI_EQUILIBRIUM_ISIJ_2017",
+      "source_version": "ISIJINT-2017-147-EQ5-v1",
+      "source_ref": "Dong et al., ISIJ International 57 (2017), Eq.2 and Eq.5",
+      "source_url": "https://doi.org/10.2355/isijinternational.ISIJINT-2017-147"
+    }
+  ]
+}

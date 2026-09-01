@@ -86,15 +86,15 @@ class P1W6BThermoSolutionTests(unittest.TestCase):
 
     def test_four_tools_pass_all_admission_gates_and_dynamic_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 53,
-            "runtime_tool_count": 53,
-            "catalog_coverage_count": 49,
-            "qualified_executable_count": 53,
-            "implementation_qualified_count": 53,
-            "data_required_count": 23,
-            "data_qualified_count": 23,
-            "interface_qualified_count": 53,
-            "fully_eligible_count": 53,
+            "registered_count": 60,
+            "runtime_tool_count": 60,
+            "catalog_coverage_count": 56,
+            "qualified_executable_count": 60,
+            "implementation_qualified_count": 60,
+            "data_required_count": 29,
+            "data_qualified_count": 29,
+            "interface_qualified_count": 60,
+            "fully_eligible_count": 60,
         })
         for code in W6B_IDS:
             with self.subTest(code=code):
@@ -268,8 +268,8 @@ class P1W6BThermoSolutionTests(unittest.TestCase):
             "B017": b017_payload(),
         }
         manifest = self.client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 53)
-        self.assertEqual(manifest["catalog_coverage_count"], 49)
+        self.assertEqual(manifest["total"], 60)
+        self.assertEqual(manifest["catalog_coverage_count"], 56)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         for code, payload in payloads.items():
             with self.subTest(code=code):

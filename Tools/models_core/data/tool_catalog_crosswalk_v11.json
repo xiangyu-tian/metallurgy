@@ -1,0 +1,92 @@
+{
+  "schema_version": "11.0.0",
+  "supersedes": "tool_catalog_crosswalk_v10.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v10.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 60,
+    "baseline_commit": "P1-W7-pending",
+    "milestone": "P1-W7"
+  },
+  "summary": {
+    "same": 51,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 1,
+    "extension": 3,
+    "catalog_entries_covered": 56,
+    "runtime_assets_preserved": 60
+  },
+  "entries": [
+    {
+      "runtime_model_code": "D005",
+      "runtime_name": "炉渣量估算",
+      "catalog_id": "D005",
+      "catalog_name": "炉渣量估算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D001", "D004", "D006", "D014"],
+      "proposed_tool_uid": "metallurgy.catalog.d005.bof_slag_mass.v1"
+    },
+    {
+      "runtime_model_code": "D006",
+      "runtime_name": "炉渣碱度计算",
+      "catalog_id": "D006",
+      "catalog_name": "炉渣碱度计算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D004", "D005", "D010", "D011"],
+      "proposed_tool_uid": "metallurgy.catalog.d006.slag_basicity.v1"
+    },
+    {
+      "runtime_model_code": "D010",
+      "runtime_name": "磷分配比",
+      "catalog_id": "D010",
+      "catalog_name": "磷分配比",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D005", "D006", "D014"],
+      "proposed_tool_uid": "metallurgy.catalog.d010.phosphorus_partition.v1"
+    },
+    {
+      "runtime_model_code": "D011",
+      "runtime_name": "硫分配比",
+      "catalog_id": "D011",
+      "catalog_name": "硫分配比",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D005", "D006"],
+      "proposed_tool_uid": "metallurgy.catalog.d011.sulfur_partition.v1"
+    },
+    {
+      "runtime_model_code": "D012",
+      "runtime_name": "锰氧化平衡",
+      "catalog_id": "D012",
+      "catalog_name": "锰氧化平衡",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D005", "D013"],
+      "proposed_tool_uid": "metallurgy.catalog.d012.manganese_oxidation.v1"
+    },
+    {
+      "runtime_model_code": "D013",
+      "runtime_name": "硅氧化平衡",
+      "catalog_id": "D013",
+      "catalog_name": "硅氧化平衡",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D005", "D012"],
+      "proposed_tool_uid": "metallurgy.catalog.d013.silicon_oxidation.v1"
+    },
+    {
+      "runtime_model_code": "D014",
+      "runtime_name": "TFe与铁损估算",
+      "catalog_id": "D014",
+      "catalog_name": "TFe与铁损估算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D005", "D010", "D021"],
+      "proposed_tool_uid": "metallurgy.catalog.d014.tfe_iron_loss.v1"
+    }
+  ]
+}

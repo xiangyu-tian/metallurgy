@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W7 D005/D006/D010-D014 isolated provider-forced function-call smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W7-D005",
+      "model_code": "D005",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的炉渣量估算工具，不得自行计算。oxidized_element_masses_kg对象只含Si=28.085 kg；oxide_product_formulas对象只含Si=SiO2。不要添加捕集率、流股、夹带、基准或其他字段。",
+      "expected": [
+        {"path": "output.oxidation_product_masses_kg.SiO2", "value": 60.083, "absolute_tolerance": 1e-10},
+        {"path": "output.total_slag_mass_kg", "value": 60.083, "absolute_tolerance": 1e-10},
+        {"path": "output.component_mass_fractions.SiO2", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.mass_closure_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D006",
+      "model_code": "D006",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的炉渣碱度工具。component_masses_kg对象严格为CaO=40 kg、SiO2=20 kg；definition严格为R2_CaO_SiO2。不得添加目标区间或自定义组分。",
+      "expected": [
+        {"path": "output.basicity", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.numerator_mass_kg", "value": 40.0, "absolute_tolerance": 1e-12},
+        {"path": "output.denominator_mass_kg", "value": 20.0, "absolute_tolerance": 1e-12},
+        {"path": "output.compliance_status", "value": "not_evaluated"}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D010",
+      "model_code": "D010",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的磷分配比工具。calculation_purpose=reference_validation，temperature_k=1873；slag_composition_mass_percent对象严格为CaO=45、MgO=8、P2O5=2、Al2O3=3、SiO2=15；tfe_mass_percent=20，metal_mass_kg=1000，slag_mass_kg=100，initial_metal_p_mass_percent=0.1。不得添加参数集ID、初始渣P或其他字段。",
+      "expected": [
+        {"path": "output.log10_apparent_partition", "value": -1.0961442605445804, "absolute_tolerance": 1e-12},
+        {"path": "output.phosphorus_partition_ratio", "value": 143.360903250758, "absolute_tolerance": 1e-9},
+        {"path": "output.equilibrium_metal_p_mass_percent", "value": 0.006520566707701999, "absolute_tolerance": 1e-12},
+        {"path": "output.p_mass_balance_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D011",
+      "model_code": "D011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的硫分配比工具。calculation_purpose=reference_validation，temperature_k=1773；slag_component_masses_kg对象严格为CaO=45、SiO2=35、Al2O3=15、MgO=5；oxygen_activity=0.001，sulfur_activity_coefficient=1，metal_mass_kg=1000，slag_mass_kg=100，initial_metal_s_mass_percent=0.05。不得添加参数集ID、初始渣S或其他字段。",
+      "expected": [
+        {"path": "output.optical_basicity", "value": 0.6820886208645908, "absolute_tolerance": 1e-12},
+        {"path": "output.log10_sulfide_capacity", "value": -3.651239798544446, "absolute_tolerance": 1e-12},
+        {"path": "output.sulfur_partition_ratio", "value": 1.785967570092078, "absolute_tolerance": 1e-12},
+        {"path": "output.s_mass_balance_residual_kg", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D012",
+      "model_code": "D012",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的锰氧化平衡工具。calculation_purpose=reference_validation，temperature_k=1823.15，mno_activity=0.2，feo_activity=0.4，mn_activity_coefficient=1，initial_mn_mass_percent=0.5，metal_mass_kg=1000。不得添加参数集ID或其他字段。",
+      "expected": [
+        {"path": "output.log10_equilibrium_constant", "value": 0.7023478594739871, "absolute_tolerance": 1e-12},
+        {"path": "output.equilibrium_mn_mass_percent", "value": 0.09922523699244654, "absolute_tolerance": 1e-12},
+        {"path": "output.potential_oxidized_mn_kg", "value": 4.007747630075534, "absolute_tolerance": 1e-12},
+        {"path": "output.equilibrium_direction", "value": "mn_oxidation_favored"}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D013",
+      "model_code": "D013",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的硅氧化平衡工具。calculation_purpose=reference_validation，temperature_k=1700，sio2_activity=0.2，feo_activity=0.4，si_activity_coefficient=1，initial_si_mass_percent=0.5，metal_mass_kg=1000。不得添加参数集ID或其他字段。",
+      "expected": [
+        {"path": "output.log10_equilibrium_constant", "value": 4.275058823529411, "absolute_tolerance": 1e-12},
+        {"path": "output.equilibrium_si_mass_percent", "value": 0.00006635156785368263, "absolute_tolerance": 1e-15},
+        {"path": "output.potential_oxidized_si_kg", "value": 4.999336484321463, "absolute_tolerance": 1e-12},
+        {"path": "output.equilibrium_direction", "value": "si_oxidation_favored"}
+      ]
+    },
+    {
+      "case_id": "LLM-W7-D014",
+      "model_code": "D014",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的TFe与铁损估算工具。slag_mass_kg=100，iron_species_mass_fractions对象只含FeO=0.2，steel_tapped_mass_kg=1000。不得添加铁价值、货币或其他字段。",
+      "expected": [
+        {"path": "output.oxidic_iron_mass_kg", "value": 15.546183397360949, "absolute_tolerance": 1e-12},
+        {"path": "output.total_iron_loss_kg", "value": 15.546183397360949, "absolute_tolerance": 1e-12},
+        {"path": "output.oxidic_tfe_mass_percent", "value": 15.546183397360949, "absolute_tolerance": 1e-12},
+        {"path": "output.metal_recovery_fraction", "value": 0.984691800676801, "absolute_tolerance": 1e-12}
+      ]
+    }
+  ]
+}

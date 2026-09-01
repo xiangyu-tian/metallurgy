@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖P1-W6B完成后的53个已注册且最终合格工具，表格主能力目录覆盖49项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖P1-W7完成后的60个已注册且最终合格工具，表格主能力目录覆盖56项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -178,6 +178,18 @@
 - B017的 `conversion_mode=gamma_infinite` 时必须给 `gamma_infinite`；取 `henry_over_pure_fugacity` 时必须同时给同为Pa的 `henry_constant_pa` 与 `pure_component_fugacity_pa`。
 - B017在溶质摩尔分数大于0.1时返回超稀释域警告；它只变换标准态，不拟合Henry常数。
 
+#### D005/D006炉渣量与碱度调用约束
+
+`D005` 函数名为 `metallurgy_estimate_bof_slag_mass`。调用者必须显式给出分元素氧化质量及每个元素唯一的氧化物去向；捕集率、熔剂、炉衬侵蚀、其他渣源和金属夹带未知时不得由大模型猜测。氧化物摩尔质量只从批准的IUPAC原子量Repository读取。`D006` 函数名为 `metallurgy_calculate_slag_basicity`，只计算显式质量基定义；自定义分子/分母组分必须互不重叠，分母为零返回 `DIVISION_BY_ZERO`。
+
+#### D010/D011磷硫分配调用约束
+
+`D010` 函数名为 `metallurgy_predict_phosphorus_partition`，只接受质量百分数基渣成分和TFe，并读取批准的Spooner等式参数；`D011` 函数名为 `metallurgy_predict_sulfur_partition`，氧活度、硫活度系数和批准的八种渣组分必须显式给出。两项输出均为公开平衡关联的参考验证/工程筛选结果，不是BOF动力学终点；大模型不得把缺失的组成、活度、初始元素量或渣钢质量补成企业默认值。
+
+#### D012/D013氧化平衡与D014铁损调用约束
+
+`D012`、`D013` 分别使用版本化Mn/FeO与Si/SiO2/FeO质量作用关系。渣活度、金属活度系数、温度和初始金属含量都必须显式输入；初始Mn/Si为零时对数反应商无定义，调用被拒绝。`D013` 的公开来源为ESR参考体系，不得冒充BOF企业标定。`D014` 函数名为 `metallurgy_estimate_tfe_iron_loss`，只支持FeO、Fe2O3、Fe3O4和显式金属Fe夹带，必须把氧化态铁损与金属夹带分项返回；不计算FeO活度、在线收得率优化或工艺控制设定值。
+
 ### `POST /api/v1/models/{model_code}/validate`
 
 请求：
@@ -253,7 +265,7 @@
 
 ## 标准错误码
 
-`INVALID_INPUT`、`UNIT_MISMATCH`、`OUT_OF_DOMAIN`、`MISSING_DATA`、`DATA_BACKEND_UNAVAILABLE`、`MULTIPLE_SPECIES_MATCH`、`PHASE_MISMATCH`、`TEMPERATURE_RANGE_ERROR`、`REACTION_NOT_BALANCED`、`NUMERICAL_ERROR`、`MODEL_NOT_APPLICABLE`、`MODEL_ARTIFACT_UNAVAILABLE`、`UNKNOWN_MODEL`、`INTERNAL_ERROR`。
+`INVALID_INPUT`、`UNIT_MISMATCH`、`OUT_OF_DOMAIN`、`MISSING_DATA`、`DATA_BACKEND_UNAVAILABLE`、`MULTIPLE_SPECIES_MATCH`、`PHASE_MISMATCH`、`TEMPERATURE_RANGE_ERROR`、`REACTION_NOT_BALANCED`、`NUMERICAL_ERROR`、`DIVISION_BY_ZERO`、`MODEL_NOT_APPLICABLE`、`MODEL_ARTIFACT_UNAVAILABLE`、`UNKNOWN_MODEL`、`INTERNAL_ERROR`。
 
 ## 四维资格与计数
 
@@ -266,19 +278,19 @@
 
 ```json
 {
-  "registered_count": 53,
-  "runtime_tool_count": 53,
-  "catalog_coverage_count": 49,
-  "qualified_executable_count": 53,
-  "implementation_qualified_count": 53,
-  "data_required_count": 23,
-  "data_qualified_count": 23,
-  "interface_qualified_count": 53,
-  "fully_eligible_count": 53
+  "registered_count": 60,
+  "runtime_tool_count": 60,
+  "catalog_coverage_count": 56,
+  "qualified_executable_count": 60,
+  "implementation_qualified_count": 60,
+  "data_required_count": 29,
+  "data_qualified_count": 29,
+  "interface_qualified_count": 60,
+  "fully_eligible_count": 60
 }
 ```
 
-这些值由注册中心实时计算，不得在运行时代码中写死。当前23个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F005读取版本化连铸热物性和边界记录，B012/B013读取现有热化学/NASA7记录，F007及B016/B017为显式输入的公式工具。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前29个数据必需型工具均通过数据库Repository执行并返回记录级溯源；本波D005/D014读取IUPAC原子量记录，D010–D013读取版本化公开关联参数，D006是显式输入公式工具。数据后端不可用、参数集缺失或温度超批准域时均失败关闭。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -290,6 +302,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前53工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
+测试包含原17个黄金种子回归、原30项资产保留、当前60工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。
