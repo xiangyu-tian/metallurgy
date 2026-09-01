@@ -104,6 +104,36 @@
 
 该输入返回总移热率 `210000 W`、平均热流密度 `105000 W/m²` 和单位钢质量移热 `105000 J/kg`。`T_out=T_in` 是带警告的零移热边界；`T_out<T_in`、非正面积或水温达到/超过647.096 K返回 `OUT_OF_DOMAIN`。
 
+#### F005一维坯壳厚度调用约束
+
+函数名为 `metallurgy_solve_1d_shell_growth`。调用者必须给出批准物性集、计算用途、铸坯半厚度、初温、时长、拉速、网格、时间步和坯壳固相率阈值。表面边界只能三选一：数据库边界ID、显式外向热流或显式表面温度；显式边界必须带来源，来自F007时还必须携带其执行ID。不得由大模型补钢种物性、相变参数、设备边界或隐藏经验常数。
+
+```json
+{
+  "arguments": {
+    "property_set_id": "F005_ANALYTIC_CONSTANT_V1",
+    "calculation_purpose": "validation",
+    "half_thickness_m": 0.1,
+    "initial_temperature_k": 800,
+    "duration_s": 0.1,
+    "casting_speed_m_s": 0.02,
+    "grid_cells": 20,
+    "time_step_s": 0.01,
+    "shell_solid_fraction_threshold": 0.9,
+    "boundary_mode": "database_profile",
+    "boundary_profile_id": "F005_BENCH_HEAT_FLUX_100KW_M2_V1",
+    "boundary_source": "approved_database_benchmark",
+    "output_points": 3
+  },
+  "options": {
+    "validate_boundary": true,
+    "return_provenance": true
+  }
+}
+```
+
+数学基准和NIST参考物性集只允许 `calculation_purpose=validation`，不得用于生产控制。数据库记录缺失、温度越出相关式范围、边界与物性集不匹配、F007执行ID缺失或非线性求解不收敛均显式失败，不使用JSON常数或默认钢种回退。
+
 ### `POST /api/v1/models/{model_code}/validate`
 
 请求：
@@ -192,19 +222,19 @@
 
 ```json
 {
-  "registered_count": 43,
-  "runtime_tool_count": 43,
-  "catalog_coverage_count": 39,
-  "qualified_executable_count": 43,
-  "implementation_qualified_count": 43,
-  "data_required_count": 19,
-  "data_qualified_count": 19,
-  "interface_qualified_count": 43,
-  "fully_eligible_count": 43
+  "registered_count": 44,
+  "runtime_tool_count": 44,
+  "catalog_coverage_count": 40,
+  "qualified_executable_count": 44,
+  "implementation_qualified_count": 44,
+  "data_required_count": 20,
+  "data_qualified_count": 20,
+  "interface_qualified_count": 44,
+  "fully_eligible_count": 44
 }
 ```
 
-这些值由注册中心实时计算，不得在运行时代码中写死。当前19个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F007为显式输入的公式工具，不引入隐藏数据默认值，也不增加数据库表或数据集。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前20个数据必需型工具均通过数据库Repository执行并返回记录级溯源；F005读取版本化连铸热物性和边界记录，F007为显式输入的公式工具。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -216,6 +246,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前43工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
+测试包含原17个黄金种子回归、原30项资产保留、当前44工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。

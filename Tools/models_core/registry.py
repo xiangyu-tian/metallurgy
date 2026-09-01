@@ -25,6 +25,7 @@ class ModelRegistry:
         """扫描当前包及子模块，注册所有 BaseModelTool 实例"""
         discovered: Dict[str, BaseModelTool] = {}
         package_prefix = __package__ or package_name
+        import_errors = []
         # 手动导入已知模块确保被发现
         for module_name in [
             f"{package_prefix}.models_a",
@@ -37,8 +38,12 @@ class ModelRegistry:
         ]:
             try:
                 importlib.import_module(module_name)
-            except ImportError:
-                continue
+            except ImportError as exc:
+                import_errors.append(f"{module_name}: {exc}")
+        if import_errors:
+            raise RuntimeError(
+                "模型模块加载失败，拒绝以不完整注册表启动: " + "; ".join(import_errors)
+            )
 
         # 扫描所有 BaseModelTool 子类
         for cls in self._find_subclasses(BaseModelTool):

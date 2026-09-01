@@ -2,6 +2,7 @@ fastapi>=0.110,<1
 uvicorn[standard]>=0.27,<1
 pydantic>=2.6,<3
 numpy>=1.26,<3
+scipy==1.18.1
 psycopg2-binary>=2.9,<3
 # P0-W4 CALPHAD runtime; exact pins keep the solver contract reproducible.
 pycalphad==0.11.2

@@ -1,4 +1,4 @@
-"""Contract tests for preserving 43 runtime assets while using the workbook as catalog."""
+"""Contract tests for preserving 44 runtime assets while using the workbook as catalog."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from models_core import ModelRegistry
 
 
 CROSSWALK_PATH = os.path.join(
-    TOOLS_DIR, "models_core", "data", "tool_catalog_crosswalk_v6.json"
+    TOOLS_DIR, "models_core", "data", "tool_catalog_crosswalk_v7.json"
 )
 
 
@@ -30,7 +30,7 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
     def test_all_current_runtime_assets_are_preserved_once(self):
         mapped = [entry["runtime_model_code"] for entry in self.crosswalk["entries"]]
         registered = [entry["model_code"] for entry in self.registry.list_models()]
-        self.assertEqual(len(mapped), 43)
+        self.assertEqual(len(mapped), 44)
         self.assertEqual(len(mapped), len(set(mapped)))
         self.assertEqual(set(mapped), set(registered))
 
@@ -68,8 +68,8 @@ class ToolCatalogCrosswalkTests(unittest.TestCase):
 
     def test_registry_exposes_dual_identity_and_dual_counts(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["runtime_tool_count"], 43)
-        self.assertEqual(counts["catalog_coverage_count"], 39)
+        self.assertEqual(counts["runtime_tool_count"], 44)
+        self.assertEqual(counts["catalog_coverage_count"], 40)
 
         oxygen = self.registry.get("A007")
         self.assertEqual(oxygen.catalog_id, "A006")

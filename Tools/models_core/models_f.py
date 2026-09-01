@@ -9,8 +9,15 @@ from functools import lru_cache
 import numpy as np
 from pycalphad import equilibrium, variables as v
 from scheil import simulate_scheil_solidification
+from scipy.linalg import solve_banded
 
 from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, ModelResult, OutputField
+from .repositories.casting_thermal_repository import (
+    approved_property_model,
+    boundary_profile,
+    correlation_derivative,
+    evaluate_correlation_rows,
+)
 from .repositories.reference_repository import RepositoryError
 from .repositories.solidification_repository import load_database
 
@@ -1051,3 +1058,590 @@ class F007_MoldHeatFlux(BaseModelTool):
             },
             boundary_check=BoundaryCheck(not warnings_out, warnings_out),
         )
+
+
+class F005_OneDimensionalShellGrowth(BaseModelTool):
+    """Implicit finite-volume solution of one-dimensional strand cooling."""
+
+    model_id, name, version = "F005", "一维坯壳厚度", "1.0.0"
+    tool_name = "metallurgy_solve_1d_shell_growth"
+    scenario = "凝固与连铸"
+    priority = "P1"
+    status = qualification_status = "qualified"
+    count_eligible = True
+    model_type = "确定性数值PDE/一维瞬态焓法有限体积"
+    data_requirement = "VERSIONED_DATABASE_REFERENCE"
+    data_access_mode = "database_repository"
+    required_dataset_ids = ["DS_NIST_SRM1155A_316L_2019", "DS_F005_ANALYTIC_BENCH_V1"]
+    database_tables = [
+        "metallurgy_v2.casting_material_property_set",
+        "metallurgy_v2.casting_material_property_correlation",
+        "metallurgy_v2.casting_boundary_profile",
+    ]
+    temperature_range = [300.0, 2900.0]
+    description = (
+        "用隐式Euler、单元中心有限体积和Picard迭代求解铸坯表面到中心的一维瞬态焓方程，"
+        "返回温度场、固相率、坯壳厚度、移热和能量闭合；物性与可选边界只读取批准的PostgreSQL记录。"
+    )
+    applicable_boundary = (
+        "适用于可近似为表面到中心一维传热的平板半厚度域，中心为对称零热流；"
+        "首版支持批准的常值表面温度、常值外向热流或数据库常值边界。"
+        "NIST SRM 1155a物性仅用于验证，不代表其他钢种、设备、喷嘴或生产控制配置。"
+    )
+    required_data = [
+        "批准物性集中的密度、比焓和导热系数；凝固计算还需固相率相关式",
+        "显式半厚度、初温、计算时间、拉速、网格、时间步长和坯壳固相率阈值",
+        "数据库批准边界，或带来源说明的显式定热流/定表温边界",
+    ]
+    data_source = [
+        "PostgreSQL metallurgy_v2.casting_material_property_set/correlation",
+        "Pichler et al. (2019) NIST SRM 1155a 316L thermophysical properties",
+        "项目生成的一维热方程解析基准",
+    ]
+    source_version = (
+        "P1-W5B-CASTING-THERMAL-2026.08-v1; implicit-enthalpy-fvm-v1; "
+        "SciPy-1.18.1; NumPy-2.5.1"
+    )
+    formula_reference = (
+        "rho(T)*dH(T)/dt = d/dx[k(T)*dT/dx]; cell-centred finite volume; "
+        "backward Euler; Picard linearization H(T_new)~=H(T*)+dH/dT|*(T_new-T*); "
+        "surface Dirichlet or outward-positive Neumann boundary; centre symmetry"
+    )
+    source_records = [
+        {
+            "source_id": "DS_NIST_SRM1155A_316L_2019",
+            "name": "Measurements of thermophysical properties of solid and liquid NIST SRM 316L stainless steel",
+            "version": "2019-12-09; DOI 10.1007/s10853-019-04261-6",
+            "url": "https://tsapps.nist.gov/publication/get_pdf.cfm?pub_id=928362",
+        },
+        {
+            "source_id": "SCIPY-LINALG-1.18.1",
+            "name": "scipy.linalg.solve_banded",
+            "version": "1.18.1",
+            "url": "https://docs.scipy.org/doc/scipy/reference/generated/scipy.linalg.solve_banded.html",
+        },
+    ]
+    failure_modes = [
+        "物性集未批准、必需属性缺失、数据库不可用或求解温度越出相关式温区",
+        "边界字段组合冲突、数据库边界与物性集不匹配、显式边界缺来源或F007执行ID",
+        "半厚度、拉速、网格、时间步、固相率阈值或非线性配置非法",
+        "Picard迭代不收敛、三对角求解失败、温度或物性产生非有限/非正值",
+        "工程用途请求使用仅限数学基准或参考验证的物性集",
+    ]
+    independent_validation = [
+        "常物性定表温半无限体结果与erf解析解对照",
+        "常物性定热流表面温度与Neumann解析解对照",
+        "零热流保持均匀初温且累计移热为零",
+        "逐步储能变化与表面累计移热闭合",
+        "网格和时间步加密后温度/坯壳结果收敛",
+        "固相率始终位于[0,1]且坯壳阈值插值位于[0,半厚度]",
+    ]
+    dependencies = []
+    relations = [
+        {
+            "type": "accepts_output_from",
+            "target": "F007",
+            "description": "F007水侧平均热流可作为F005外向定热流边界，调用时必须携带F007执行ID。",
+        },
+        {
+            "type": "overlaps_with",
+            "target": "T001",
+            "description": "T001给出常物性平板稳态总热流，F005求解温变物性、相变和时间演化的一维场。",
+        },
+    ]
+    input_fields = [
+        InputField("property_set_id", "批准物性集ID", "string", description="必须存在于PostgreSQL且is_approved=true"),
+        InputField("calculation_purpose", "计算用途", "select", enum=["validation", "engineering"], description="validation允许参考/数学基准；engineering只允许工程或生产批准物性集"),
+        InputField("half_thickness_m", "铸坯半厚度", "number", unit="m", min_value=0.001, max_value=1.0),
+        InputField("initial_temperature_k", "初始均匀温度", "number", unit="K", min_value=1.0, max_value=5000.0),
+        InputField("duration_s", "计算时长", "number", unit="s", min_value=1e-6, max_value=7200.0),
+        InputField("casting_speed_m_s", "拉坯速度", "number", unit="m/s", min_value=1e-8, max_value=1.0),
+        InputField("grid_cells", "空间单元数", "integer", unit="1", min_value=10, max_value=200, description="表面到中心的均匀有限体积单元数"),
+        InputField("time_step_s", "隐式时间步", "number", unit="s", min_value=1e-6, max_value=60.0),
+        InputField("shell_solid_fraction_threshold", "坯壳固相率阈值", "number", unit="1", min_value=0.01, max_value=0.99),
+        InputField("boundary_mode", "表面边界模式", "select", enum=["database_profile", "constant_heat_flux", "constant_surface_temperature"]),
+        InputField("boundary_profile_id", "数据库边界ID", "string", required=False, description="boundary_mode=database_profile时必填"),
+        InputField("surface_heat_flux_w_m2", "外向表面热流", "number", required=False, unit="W/m^2", min_value=0.0, description="constant_heat_flux时必填；正值表示铸坯向外移热"),
+        InputField("surface_temperature_k", "给定表面温度", "number", required=False, unit="K", min_value=1.0, max_value=5000.0, description="constant_surface_temperature时必填且低于初温"),
+        InputField("boundary_source", "边界来源", "string", description="数据库记录、测量或上游工具来源；不得为空"),
+        InputField("upstream_execution_id", "上游执行ID", "string", required=False, description="boundary_source=F007时必填"),
+        InputField("picard_tolerance_k", "Picard温度收敛容差", "number", required=False, default=1e-6, unit="K", min_value=1e-8, max_value=1e-2),
+        InputField("max_picard_iterations", "最大Picard迭代次数", "integer", required=False, default=40, unit="1", min_value=3, max_value=100),
+        InputField("output_points", "历史输出点数上限", "integer", required=False, default=11, unit="1", min_value=2, max_value=51),
+    ]
+    output_fields = [
+        OutputField("time_history", "温度与坯壳历史", "array", "time:s; position:m; temperature:K; shell:m; energy:J/m^2"),
+        OutputField("final_temperature_profile", "最终温度/固相率剖面", "array", "x:m; temperature:K; solid_fraction:1"),
+        OutputField("shell_thickness_m", "最终坯壳厚度", "number", "m", nullable=True),
+        OutputField("shell_status", "坯壳结果状态", "string"),
+        OutputField("final_surface_temperature_k", "最终表面温度", "number", "K"),
+        OutputField("final_center_temperature_k", "最终中心温度", "number", "K"),
+        OutputField("total_time_s", "总计算时间", "number", "s"),
+        OutputField("final_axial_position_m", "对应轴向位置", "number", "m"),
+        OutputField("cumulative_removed_heat_j_m2", "累计向外移热", "number", "J/m^2"),
+        OutputField("stored_energy_change_j_m2", "离散储能变化", "number", "J/m^2"),
+        OutputField("energy_closure_residual_j_m2", "能量闭合残差", "number", "J/m^2"),
+        OutputField("energy_closure_relative", "相对能量闭合残差", "number", "1"),
+        OutputField("grid_cells", "空间单元数", "number", "1"),
+        OutputField("cell_size_m", "单元尺寸", "number", "m"),
+        OutputField("time_steps", "实际时间步数", "number", "1"),
+        OutputField("nominal_time_step_s", "名义时间步", "number", "s"),
+        OutputField("max_picard_iterations_used", "单步最大Picard迭代次数", "number", "1"),
+        OutputField("all_steps_converged", "全部时间步收敛", "boolean"),
+        OutputField("property_set_id", "物性集ID", "string"),
+        OutputField("property_usage_scope", "物性使用域", "string"),
+        OutputField("boundary_summary", "边界配置与来源", "object"),
+        OutputField("calculation_purpose", "计算用途", "string"),
+        OutputField("solver_version", "求解器版本", "string"),
+    ]
+    validation_rules = [
+        {"rule": "approved_database_property_records_only"},
+        {"rule": "exactly_one_surface_boundary_payload"},
+        {"rule": "implicit_time_steps_at_most_2000"},
+        {"rule": "enthalpy_and_conductivity_domain_checked_each_picard_iteration"},
+        {"rule": "engineering_mode_rejects_reference_only_property_sets"},
+    ]
+
+    _ANALYTIC_COMMON = {
+        "property_set_id": "F005_ANALYTIC_CONSTANT_V1",
+        "calculation_purpose": "validation",
+        "half_thickness_m": 0.1,
+        "initial_temperature_k": 800.0,
+        "casting_speed_m_s": 0.02,
+        "grid_cells": 20,
+        "shell_solid_fraction_threshold": 0.9,
+        "boundary_source": "approved_database_benchmark",
+        "output_points": 3,
+    }
+    qualification_cases = [
+        {
+            "id": "F005-N1",
+            "kind": "normal",
+            "input": {**_ANALYTIC_COMMON, "duration_s": 0.1, "time_step_s": 0.01,
+                      "boundary_mode": "database_profile",
+                      "boundary_profile_id": "F005_BENCH_SURFACE_TEMP_300K_V1"},
+        },
+        {
+            "id": "F005-N2",
+            "kind": "normal",
+            "input": {**_ANALYTIC_COMMON, "duration_s": 0.1, "time_step_s": 0.01,
+                      "boundary_mode": "database_profile",
+                      "boundary_profile_id": "F005_BENCH_HEAT_FLUX_100KW_M2_V1"},
+        },
+        {
+            "id": "F005-N3",
+            "kind": "normal",
+            "input": {
+                "property_set_id": "NIST_SRM1155A_316L_2019_V1",
+                "calculation_purpose": "validation",
+                "half_thickness_m": 0.05,
+                "initial_temperature_k": 1750.0,
+                "duration_s": 0.5,
+                "casting_speed_m_s": 0.02,
+                "grid_cells": 12,
+                "time_step_s": 0.05,
+                "shell_solid_fraction_threshold": 0.9,
+                "boundary_mode": "constant_surface_temperature",
+                "surface_temperature_k": 1500.0,
+                "boundary_source": "published_reference_validation_boundary",
+                "output_points": 3,
+            },
+        },
+        {
+            "id": "F005-B1",
+            "kind": "boundary",
+            "input": {**_ANALYTIC_COMMON, "duration_s": 0.1, "time_step_s": 0.01,
+                      "grid_cells": 10, "boundary_mode": "database_profile",
+                      "boundary_profile_id": "F005_BENCH_ZERO_HEAT_FLUX_V1"},
+        },
+        {
+            "id": "F005-F1",
+            "kind": "failure",
+            "input": {**_ANALYTIC_COMMON, "duration_s": 0.1, "time_step_s": 0.01,
+                      "boundary_mode": "database_profile",
+                      "boundary_profile_id": "DOES_NOT_EXIST"},
+        },
+        {
+            "id": "F005-F2",
+            "kind": "failure",
+            "input": {**_ANALYTIC_COMMON, "duration_s": 0.1, "time_step_s": 0.01,
+                      "boundary_mode": "constant_heat_flux",
+                      "surface_heat_flux_w_m2": 100000.0,
+                      "boundary_source": "F007"},
+        },
+    ]
+    data_qualification_cases = [{"id": "F005-DATA-NIST", "input": qualification_cases[2]["input"]}]
+
+    @staticmethod
+    def _as_integer(value, name, minimum, maximum):
+        if isinstance(value, bool):
+            raise ValueError(f"{name}必须是整数")
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{name}必须是整数") from exc
+        if not math.isfinite(number) or not number.is_integer():
+            raise ValueError(f"{name}必须是整数")
+        integer = int(number)
+        if integer < minimum or integer > maximum:
+            raise ValueError(f"{name}必须在{minimum}到{maximum}之间")
+        return integer
+
+    @staticmethod
+    def _values(rows, temperatures):
+        return np.asarray(
+            [evaluate_correlation_rows(rows, float(temperature))[0] for temperature in temperatures],
+            dtype=float,
+        )
+
+    @staticmethod
+    def _harmonic(left, right):
+        denominator = left + right
+        if left <= 0 or right <= 0 or denominator <= 0:
+            raise RepositoryError("导热系数必须为有限正数", "OUT_OF_DOMAIN")
+        return 2.0 * left * right / denominator
+
+    @staticmethod
+    def _shell_thickness(cell_fraction, surface_fraction, threshold, dx, half_thickness):
+        if cell_fraction is None or surface_fraction is None:
+            return None
+        if surface_fraction < threshold:
+            return 0.0
+        for index, fraction in enumerate(cell_fraction):
+            if fraction >= threshold:
+                continue
+            if index == 0:
+                left_x, left_fraction = 0.0, surface_fraction
+            else:
+                left_x = (index - 0.5) * dx
+                left_fraction = cell_fraction[index - 1]
+            right_x = (index + 0.5) * dx
+            if left_fraction <= fraction:
+                return min(half_thickness, max(0.0, left_x))
+            ratio = (left_fraction - threshold) / (left_fraction - fraction)
+            return min(half_thickness, max(0.0, left_x + ratio * (right_x - left_x)))
+        return half_thickness
+
+    def _resolve_boundary(self, params, property_set_id, duration):
+        mode = params["boundary_mode"]
+        profile_id = str(params.get("boundary_profile_id") or "").strip()
+        heat_flux = params.get("surface_heat_flux_w_m2")
+        surface_temperature = params.get("surface_temperature_k")
+        source = params["boundary_source"].strip()
+        source_token = source.upper()
+        upstream_id = str(params.get("upstream_execution_id") or "").strip()
+        if not source:
+            raise RepositoryError("boundary_source必须是非空来源说明", "INVALID_INPUT")
+        supplied = {
+            "boundary_profile_id": bool(profile_id),
+            "surface_heat_flux_w_m2": heat_flux is not None,
+            "surface_temperature_k": surface_temperature is not None,
+        }
+        provenance = []
+        if mode == "database_profile":
+            if not supplied["boundary_profile_id"] or supplied["surface_heat_flux_w_m2"] \
+                    or supplied["surface_temperature_k"]:
+                raise RepositoryError("database_profile只允许且必须提供boundary_profile_id", "INVALID_INPUT")
+            profile, provenance = boundary_profile(profile_id, 0.0)
+            if duration > profile["domain"][1]:
+                raise RepositoryError("计算时长超出数据库边界批准域", "OUT_OF_DOMAIN")
+            if profile["property_set_id"] and profile["property_set_id"] != property_set_id:
+                raise RepositoryError("数据库边界与物性集不匹配", "MODEL_NOT_APPLICABLE")
+            if profile["profile_type"] == "SURFACE_TEMPERATURE":
+                resolved_mode = "constant_surface_temperature"
+            elif profile["profile_type"] == "SURFACE_HEAT_FLUX":
+                resolved_mode = "constant_heat_flux"
+            else:
+                raise RepositoryError("首版不支持该数据库边界类型", "MODEL_NOT_APPLICABLE")
+            value = float(profile["value"])
+            source = f"database:{profile_id}; caller:{source}"
+        elif mode == "constant_heat_flux":
+            if supplied["boundary_profile_id"] or not supplied["surface_heat_flux_w_m2"] \
+                    or supplied["surface_temperature_k"]:
+                raise RepositoryError("constant_heat_flux只允许且必须提供surface_heat_flux_w_m2", "INVALID_INPUT")
+            resolved_mode, value = mode, float(heat_flux)
+            if not math.isfinite(value) or value < 0:
+                raise RepositoryError("surface_heat_flux_w_m2必须是有限非负数", "OUT_OF_DOMAIN")
+        elif mode == "constant_surface_temperature":
+            if supplied["boundary_profile_id"] or supplied["surface_heat_flux_w_m2"] \
+                    or not supplied["surface_temperature_k"]:
+                raise RepositoryError("constant_surface_temperature只允许且必须提供surface_temperature_k", "INVALID_INPUT")
+            resolved_mode, value = mode, float(surface_temperature)
+            if not math.isfinite(value) or value <= 0:
+                raise RepositoryError("surface_temperature_k必须是有限正数", "OUT_OF_DOMAIN")
+        else:
+            raise RepositoryError("不支持的boundary_mode", "INVALID_INPUT")
+        if source_token == "F007" and (resolved_mode != "constant_heat_flux" or not upstream_id):
+            raise RepositoryError("boundary_source=F007时必须使用定热流并提供upstream_execution_id", "MISSING_DATA")
+        return {
+            "mode": resolved_mode,
+            "value": value,
+            "source": source,
+            "upstream_execution_id": upstream_id or None,
+            "boundary_profile_id": profile_id or None,
+        }, provenance
+
+    def invoke(self, params, context=None):
+        try:
+            grid_cells = self._as_integer(params["grid_cells"], "grid_cells", 10, 200)
+            max_picard = self._as_integer(
+                params.get("max_picard_iterations", 40), "max_picard_iterations", 3, 100
+            )
+            output_points = self._as_integer(params.get("output_points", 11), "output_points", 2, 51)
+            half_thickness = float(params["half_thickness_m"])
+            initial_temperature = float(params["initial_temperature_k"])
+            duration = float(params["duration_s"])
+            casting_speed = float(params["casting_speed_m_s"])
+            nominal_dt = float(params["time_step_s"])
+            threshold = float(params["shell_solid_fraction_threshold"])
+            tolerance = float(params.get("picard_tolerance_k", 1e-6))
+            if nominal_dt > duration:
+                raise RepositoryError("time_step_s不能大于duration_s", "INVALID_INPUT")
+            step_count = int(math.ceil(duration / nominal_dt - 1e-12))
+            if step_count > 2000:
+                raise RepositoryError("时间步数超过2000；请增大time_step_s或缩短duration_s", "OUT_OF_DOMAIN")
+
+            property_set_id = params["property_set_id"].strip()
+            if not property_set_id:
+                raise RepositoryError("property_set_id不能为空", "INVALID_INPUT")
+            boundary, boundary_provenance = self._resolve_boundary(
+                params, property_set_id, duration
+            )
+            required_properties = ["DENSITY", "ENTHALPY", "THERMAL_CONDUCTIVITY"]
+            model, provenance = approved_property_model(property_set_id, required_properties)
+            property_set = model["property_set"]
+            phase_model = property_set["phase_model"]
+            if phase_model != "no_phase_change":
+                model, provenance = approved_property_model(
+                    property_set_id, [*required_properties, "SOLID_FRACTION"]
+                )
+            correlations = model["correlations"]
+            usage_scope = property_set["usage_scope"]
+            purpose = params["calculation_purpose"]
+            if purpose == "engineering" and usage_scope not in {
+                "ENGINEERING_APPROVED", "PRODUCTION_APPROVED"
+            }:
+                raise RepositoryError(
+                    f"物性集{property_set_id}的{usage_scope}使用域不允许engineering计算",
+                    "MODEL_NOT_APPLICABLE",
+                )
+            if purpose == "validation" and usage_scope not in {
+                "REFERENCE_VALIDATION_ONLY", "MATHEMATICAL_BENCHMARK_ONLY",
+                "ENGINEERING_APPROVED", "PRODUCTION_APPROVED",
+            }:
+                raise RepositoryError("物性集使用域不允许validation计算", "MODEL_NOT_APPLICABLE")
+            if boundary["mode"] == "constant_surface_temperature" \
+                    and boundary["value"] >= initial_temperature:
+                raise RepositoryError("凝固冷却的给定表面温度必须低于初始温度", "MODEL_NOT_APPLICABLE")
+            provenance.extend(boundary_provenance)
+
+            dx = half_thickness / grid_cells
+            x = (np.arange(grid_cells, dtype=float) + 0.5) * dx
+            temperature = np.full(grid_cells, initial_temperature, dtype=float)
+            capture_steps = set(np.linspace(
+                0, step_count, min(output_points, step_count + 1), dtype=int
+            ).tolist())
+            time_history = []
+            cumulative_removed = 0.0
+            cumulative_stored = 0.0
+            maximum_iterations_used = 0
+
+            def evaluate(name, values):
+                return self._values(correlations[name], values)
+
+            def solid_state(values, surface_temperature):
+                if phase_model == "no_phase_change":
+                    return None, None, None
+                fractions = evaluate("SOLID_FRACTION", values).tolist()
+                surface_fraction = evaluate_correlation_rows(
+                    correlations["SOLID_FRACTION"], float(surface_temperature)
+                )[0]
+                shell = self._shell_thickness(
+                    fractions, surface_fraction, threshold, dx, half_thickness
+                )
+                return fractions, float(surface_fraction), shell
+
+            def surface_state(values):
+                conductivity = evaluate("THERMAL_CONDUCTIVITY", values)
+                if boundary["mode"] == "constant_surface_temperature":
+                    surface_temperature = boundary["value"]
+                    surface_k = evaluate_correlation_rows(
+                        correlations["THERMAL_CONDUCTIVITY"], surface_temperature
+                    )[0]
+                    face_k = self._harmonic(float(conductivity[0]), float(surface_k))
+                    heat_flux = 2.0 * face_k * (float(values[0]) - surface_temperature) / dx
+                else:
+                    heat_flux = boundary["value"]
+                    surface_temperature = float(values[0]) - heat_flux * dx / (2.0 * conductivity[0])
+                    evaluate_correlation_rows(
+                        correlations["THERMAL_CONDUCTIVITY"], surface_temperature
+                    )
+                return float(surface_temperature), float(heat_flux), conductivity
+
+            initial_surface, _, _ = surface_state(temperature)
+            initial_fraction, _, initial_shell = solid_state(temperature, initial_surface)
+            time_history.append({
+                "time_s": 0.0,
+                "axial_position_m": 0.0,
+                "surface_temperature_k": initial_surface,
+                "center_temperature_k": initial_temperature,
+                "shell_thickness_m": initial_shell,
+                "cumulative_removed_heat_j_m2": 0.0,
+                "stored_energy_change_j_m2": 0.0,
+                "energy_closure_residual_j_m2": 0.0,
+                "picard_iterations": 0,
+            })
+
+            current_time = 0.0
+            for step in range(1, step_count + 1):
+                dt = duration - current_time if step == step_count else nominal_dt
+                old_temperature = temperature.copy()
+                old_enthalpy = evaluate("ENTHALPY", old_temperature)
+                iterate = old_temperature.copy()
+                converged = False
+                final_density = None
+                iterations_used = 0
+                for iteration in range(1, max_picard + 1):
+                    density = evaluate("DENSITY", iterate)
+                    conductivity = evaluate("THERMAL_CONDUCTIVITY", iterate)
+                    enthalpy_iterate = evaluate("ENTHALPY", iterate)
+                    effective_cp = np.asarray([
+                        correlation_derivative(correlations["ENTHALPY"], float(value))
+                        for value in iterate
+                    ], dtype=float)
+                    if np.any(~np.isfinite(density)) or np.any(density <= 0) \
+                            or np.any(~np.isfinite(conductivity)) or np.any(conductivity <= 0) \
+                            or np.any(~np.isfinite(effective_cp)) or np.any(effective_cp <= 0):
+                        raise RepositoryError("密度、导热系数和有效热容必须为有限正数", "OUT_OF_DOMAIN")
+
+                    mass = density * effective_cp / dt
+                    diagonal = mass.copy()
+                    right_hand = density / dt * (
+                        old_enthalpy - enthalpy_iterate + effective_cp * iterate
+                    )
+                    face_k = 2.0 * conductivity[:-1] * conductivity[1:] \
+                        / (conductivity[:-1] + conductivity[1:])
+                    face_coefficient = face_k / dx ** 2
+                    diagonal[:-1] += face_coefficient
+                    diagonal[1:] += face_coefficient
+                    lower = -face_coefficient.copy()
+                    upper = -face_coefficient.copy()
+                    if boundary["mode"] == "constant_surface_temperature":
+                        boundary_temperature = boundary["value"]
+                        boundary_k = evaluate_correlation_rows(
+                            correlations["THERMAL_CONDUCTIVITY"], boundary_temperature
+                        )[0]
+                        surface_k = self._harmonic(float(conductivity[0]), float(boundary_k))
+                        surface_coefficient = 2.0 * surface_k / dx ** 2
+                        diagonal[0] += surface_coefficient
+                        right_hand[0] += surface_coefficient * boundary_temperature
+                    else:
+                        right_hand[0] -= boundary["value"] / dx
+
+                    banded = np.zeros((3, grid_cells), dtype=float)
+                    banded[0, 1:] = upper
+                    banded[1, :] = diagonal
+                    banded[2, :-1] = lower
+                    solved = solve_banded((1, 1), banded, right_hand, check_finite=True)
+                    if np.any(~np.isfinite(solved)):
+                        raise RepositoryError("线性方程组产生非有限温度", "NUMERICAL_ERROR")
+                    delta = float(np.max(np.abs(solved - iterate)))
+                    iterations_used = iteration
+                    final_density = density
+                    if delta <= tolerance:
+                        temperature = solved
+                        converged = True
+                        break
+                    iterate = 0.7 * solved + 0.3 * iterate
+                if not converged:
+                    raise RepositoryError(
+                        f"时间步{step}的Picard迭代在{max_picard}次内未收敛", "NUMERICAL_ERROR"
+                    )
+                maximum_iterations_used = max(maximum_iterations_used, iterations_used)
+                new_enthalpy = evaluate("ENTHALPY", temperature)
+                step_stored = float(np.sum(final_density * (new_enthalpy - old_enthalpy)) * dx)
+                surface_temperature, heat_flux, _ = surface_state(temperature)
+                step_removed = heat_flux * dt
+                cumulative_stored += step_stored
+                cumulative_removed += step_removed
+                current_time += dt
+                if step in capture_steps or step == step_count:
+                    _, _, shell = solid_state(temperature, surface_temperature)
+                    time_history.append({
+                        "time_s": current_time,
+                        "axial_position_m": casting_speed * current_time,
+                        "surface_temperature_k": surface_temperature,
+                        "center_temperature_k": float(temperature[-1]),
+                        "shell_thickness_m": shell,
+                        "cumulative_removed_heat_j_m2": cumulative_removed,
+                        "stored_energy_change_j_m2": cumulative_stored,
+                        "energy_closure_residual_j_m2": cumulative_stored + cumulative_removed,
+                        "picard_iterations": iterations_used,
+                    })
+
+            final_surface, _, _ = surface_state(temperature)
+            final_fraction, _, final_shell = solid_state(temperature, final_surface)
+            final_profile = [
+                {
+                    "x_m": float(position),
+                    "temperature_k": float(value),
+                    "solid_fraction": None if final_fraction is None else float(final_fraction[index]),
+                }
+                for index, (position, value) in enumerate(zip(x, temperature))
+            ]
+            closure = cumulative_stored + cumulative_removed
+            closure_scale = max(abs(cumulative_stored), abs(cumulative_removed), 1.0)
+            closure_relative = abs(closure) / closure_scale
+            if final_shell is None:
+                shell_status = "not_applicable_no_phase_model"
+            elif final_shell <= 0:
+                shell_status = "no_threshold_shell"
+            elif final_shell >= half_thickness:
+                shell_status = "fully_solid_to_center"
+            else:
+                shell_status = "partial_shell"
+            warnings_out = []
+            if grid_cells == 10:
+                warnings_out.append(BoundaryWarning("grid_cells", "使用最低允许网格，仅适合边界/烟雾验证"))
+            if usage_scope in {"REFERENCE_VALIDATION_ONLY", "MATHEMATICAL_BENCHMARK_ONLY"}:
+                warnings_out.append(BoundaryWarning("property_set_id", f"物性使用域为{usage_scope}，不得用于生产控制"))
+            if closure_relative > 0.005:
+                warnings_out.append(BoundaryWarning("energy_closure_relative", "能量闭合相对残差超过0.5%"))
+            if closure_relative > 0.02:
+                raise RepositoryError("能量闭合相对残差超过2%，拒绝返回合格结果", "NUMERICAL_ERROR")
+            return ModelResult(
+                True,
+                result={
+                    "time_history": time_history,
+                    "final_temperature_profile": final_profile,
+                    "shell_thickness_m": final_shell,
+                    "shell_status": shell_status,
+                    "final_surface_temperature_k": final_surface,
+                    "final_center_temperature_k": float(temperature[-1]),
+                    "total_time_s": current_time,
+                    "final_axial_position_m": casting_speed * current_time,
+                    "cumulative_removed_heat_j_m2": cumulative_removed,
+                    "stored_energy_change_j_m2": cumulative_stored,
+                    "energy_closure_residual_j_m2": closure,
+                    "energy_closure_relative": closure_relative,
+                    "grid_cells": grid_cells,
+                    "cell_size_m": dx,
+                    "time_steps": step_count,
+                    "nominal_time_step_s": nominal_dt,
+                    "max_picard_iterations_used": maximum_iterations_used,
+                    "all_steps_converged": True,
+                    "property_set_id": property_set_id,
+                    "property_usage_scope": usage_scope,
+                    "boundary_summary": boundary,
+                    "calculation_purpose": purpose,
+                    "solver_version": "implicit-enthalpy-fvm-v1/scipy-1.18.1",
+                },
+                boundary_check=BoundaryCheck(not warnings_out, warnings_out),
+                provenance=provenance,
+            )
+        except RepositoryError as exc:
+            return ModelResult(False, error=str(exc), error_code=exc.error_code)
+        except (ValueError, TypeError) as exc:
+            return ModelResult(False, error=str(exc), error_code="INVALID_INPUT")
+        except Exception as exc:
+            return ModelResult(False, error=f"一维焓法求解失败: {exc}", error_code="NUMERICAL_ERROR")

@@ -89,8 +89,92 @@ def _evaluate(row: dict[str, Any], temperature_k: float) -> float:
     else:
         raise RepositoryError(f"未认证的热物性方程类型: {equation}", "MODEL_ARTIFACT_UNAVAILABLE")
     if not math.isfinite(value):
-        raise RepositoryError("热物性计算产生非有限值", "MODEL_EXECUTION_ERROR")
+        raise RepositoryError("热物性计算产生非有限值", "NUMERICAL_ERROR")
     return value
+
+
+def evaluate_correlation_rows(rows: list[dict[str, Any]], temperature_k: float) -> tuple[float, dict[str, Any]]:
+    """Evaluate one approved correlation from an already loaded DB record set."""
+    candidates = [
+        row for row in rows
+        if float(row["temperature_min_k"]) <= temperature_k <= float(row["temperature_max_k"])
+    ]
+    if not candidates:
+        raise RepositoryError(f"{temperature_k:g} K没有批准的热物性相关式", "OUT_OF_DOMAIN")
+    row = min(candidates, key=lambda item: (int(item["priority"]), int(item["id"])))
+    return _evaluate(row, temperature_k), row
+
+
+def correlation_derivative(rows: list[dict[str, Any]], temperature_k: float) -> float:
+    """Return dy/dT for an approved scalar property correlation."""
+    _, row = evaluate_correlation_rows(rows, temperature_k)
+    equation = row["equation_type"]
+    coefficients = row["coefficients"]
+    if equation == "POLYNOMIAL_T":
+        derivative = float(coefficients.get("b", 0.0)) + 2 * float(coefficients.get("c", 0.0)) * temperature_k
+    elif equation == "LINEAR_ENDPOINTS":
+        derivative = ((float(coefficients["y1"]) - float(coefficients["y0"]))
+                      / (float(coefficients["x1"]) - float(coefficients["x0"])))
+    elif equation == "PIECEWISE_LINEAR_TABLE":
+        points = coefficients["points"]
+        temperatures = [float(point[0]) for point in points]
+        index = bisect.bisect_left(temperatures, temperature_k)
+        if index == 0:
+            intervals = [(points[0], points[1])]
+        elif index == len(points):
+            intervals = [(points[-2], points[-1])]
+        elif temperatures[index] == temperature_k and 0 < index < len(points) - 1:
+            intervals = [(points[index - 1], points[index]), (points[index], points[index + 1])]
+        else:
+            intervals = [(points[index - 1], points[index])]
+        slopes = [
+            (float(right[1]) - float(left[1])) / (float(right[0]) - float(left[0]))
+            for left, right in intervals
+        ]
+        derivative = math.fsum(slopes) / len(slopes)
+    elif equation == "CONSTANT":
+        derivative = 0.0
+    else:
+        raise RepositoryError(f"方程类型{equation}没有认证的一阶导数", "MODEL_ARTIFACT_UNAVAILABLE")
+    if not math.isfinite(derivative):
+        raise RepositoryError("热物性导数产生非有限值", "NUMERICAL_ERROR")
+    return derivative
+
+
+def approved_property_model(property_set_id: str, property_types: Iterable[str]) \
+        -> tuple[dict[str, Any], list[Provenance]]:
+    """Load approved correlation records once for a numerical solver run."""
+    requested = sorted(set(property_types))
+    if not requested:
+        raise RepositoryError("未请求任何热物性", "MISSING_DATA")
+    property_set, set_provenance = approved_property_set(property_set_id)
+    with _cursor() as cur:
+        cur.execute(
+            """SELECT c.*, p.usage_scope, p.dataset_id, d.name dataset_name,
+                      d.version dataset_version, d.checksum dataset_checksum,
+                      d.access_url dataset_access_url
+               FROM metallurgy_v2.casting_material_property_correlation c
+               JOIN metallurgy_v2.casting_material_property_set p USING(property_set_id)
+               JOIN metallurgy_v2.dataset_registry d USING(dataset_id)
+               WHERE c.property_set_id=%s AND c.property_type=ANY(%s)
+                 AND c.is_active=TRUE AND p.is_approved=TRUE
+               ORDER BY c.property_type, c.priority, c.id""",
+            (property_set_id, requested),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    grouped = {property_type: [] for property_type in requested}
+    for row in rows:
+        grouped[row["property_type"]].append(row)
+    missing = [property_type for property_type, records in grouped.items() if not records]
+    if missing:
+        raise RepositoryError(
+            f"物性集{property_set_id}缺少批准属性: {', '.join(missing)}", "MISSING_DATA"
+        )
+    provenance = [set_provenance]
+    provenance.extend(
+        _provenance(row, "metallurgy_v2.casting_material_property_correlation") for row in rows
+    )
+    return {"property_set": property_set, "correlations": grouped}, provenance
 
 
 def property_value(property_set_id: str, property_type: str,
@@ -195,6 +279,7 @@ def boundary_profile(boundary_profile_id: str, independent_value: float | None =
         value = float(payload["profile_json"]["value"])
     result = {
         "boundary_profile_id": boundary_profile_id,
+        "property_set_id": payload["property_set_id"],
         "profile_type": payload["profile_type"],
         "independent_variable": payload["independent_variable"],
         "domain": [float(payload["domain_min"]), float(payload["domain_max"])],

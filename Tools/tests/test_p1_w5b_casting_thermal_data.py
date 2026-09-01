@@ -1,4 +1,4 @@
-"""P1-W5B-Data qualification tests; this wave adds no runtime tool."""
+"""P1-W5B thermal-data qualification tests in the current runtime baseline."""
 from __future__ import annotations
 
 import hashlib
@@ -50,19 +50,19 @@ class P1W5BCastingThermalDataTests(unittest.TestCase):
             config["port"] = int(os.environ["METALLURGY_DB_PORT"])
         return psycopg2.connect(**config)
 
-    def test_wave_does_not_change_runtime_tool_counts(self):
+    def test_data_layer_integrates_with_current_runtime_counts(self):
         registry = ModelRegistry()
         registry.discover()
         self.assertEqual(registry.get_counts(), {
-            "registered_count": 43,
-            "runtime_tool_count": 43,
-            "catalog_coverage_count": 39,
-            "qualified_executable_count": 43,
-            "implementation_qualified_count": 43,
-            "data_required_count": 19,
-            "data_qualified_count": 19,
-            "interface_qualified_count": 43,
-            "fully_eligible_count": 43,
+            "registered_count": 44,
+            "runtime_tool_count": 44,
+            "catalog_coverage_count": 40,
+            "qualified_executable_count": 44,
+            "implementation_qualified_count": 44,
+            "data_required_count": 20,
+            "data_qualified_count": 20,
+            "interface_qualified_count": 44,
+            "fully_eligible_count": 44,
         })
 
     def test_source_asset_is_versioned_licensed_and_excludes_restricted_ds042(self):

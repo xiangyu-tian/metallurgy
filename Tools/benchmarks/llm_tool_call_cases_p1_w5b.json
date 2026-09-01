@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W5B F005 isolated provider-forced function-call smoke test; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W5B-F005",
+      "model_code": "F005",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的一维坯壳厚度工具，不得自行计算或改选工具。使用批准的数学基准物性集F005_ANALYTIC_CONSTANT_V1，用途validation；半厚度0.1 m，初始温度800 K，计算0.1 s，拉速0.02 m/s，20个空间单元，时间步0.01 s，坯壳固相率阈值0.9；边界模式database_profile，边界ID为F005_BENCH_HEAT_FLUX_100KW_M2_V1，边界来源approved_database_benchmark；输出点上限3。不得补表面温度、显式热流或上游执行ID。",
+      "expected": [
+        {"path": "output.final_surface_temperature_k", "value": 795.8339471147516, "absolute_tolerance": 0.000001},
+        {"path": "output.cumulative_removed_heat_j_m2", "value": 10000.0, "absolute_tolerance": 0.000001},
+        {"path": "output.total_time_s", "value": 0.1, "absolute_tolerance": 1e-12},
+        {"path": "output.final_axial_position_m", "value": 0.002, "absolute_tolerance": 1e-12},
+        {"path": "output.property_set_id", "value": "F005_ANALYTIC_CONSTANT_V1"},
+        {"path": "output.boundary_summary.boundary_profile_id", "value": "F005_BENCH_HEAT_FLUX_100KW_M2_V1"},
+        {"path": "output.solver_version", "value": "implicit-enthalpy-fvm-v1/scipy-1.18.1"}
+      ]
+    }
+  ]
+}

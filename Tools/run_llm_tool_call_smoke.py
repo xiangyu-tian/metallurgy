@@ -141,7 +141,18 @@ def main() -> int:
             "temperature": 0,
             "max_tokens": 4096,
         }
+        thinking_mode = case.get("thinking_mode")
+        if thinking_mode is not None:
+            if thinking_mode not in {"enabled", "disabled"}:
+                raise ValueError(
+                    f"{case['case_id']}: thinking_mode must be enabled or disabled"
+                )
+            first_payload["thinking"] = {"type": thinking_mode}
         if case.get("force_tool_choice", False):
+            if thinking_mode == "enabled":
+                raise ValueError(
+                    f"{case['case_id']}: named tool_choice is incompatible with thinking_mode=enabled"
+                )
             first_payload["tool_choice"] = {
                 "type": "function",
                 "function": {"name": definition["function"]["name"]},
@@ -174,23 +185,26 @@ def main() -> int:
             for key in ("role", "content", "reasoning_content", "tool_calls")
             if key in assistant
         }
+        final_payload = {
+            "model": model_name,
+            "messages": messages + [
+                assistant_history,
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "name": function["name"],
+                    "content": json.dumps(execution, ensure_ascii=False),
+                },
+            ],
+            "stream": False,
+            "temperature": 0,
+            "max_tokens": 512,
+        }
+        if thinking_mode is not None:
+            final_payload["thinking"] = {"type": thinking_mode}
         final = request_json(
             provider_url,
-            payload={
-                "model": model_name,
-                "messages": messages + [
-                    assistant_history,
-                    {
-                        "role": "tool",
-                        "tool_call_id": tool_call["id"],
-                        "name": function["name"],
-                        "content": json.dumps(execution, ensure_ascii=False),
-                    },
-                ],
-                "stream": False,
-                "temperature": 0,
-                "max_tokens": 512,
-            },
+            payload=final_payload,
             headers=provider_headers,
         )
         final_content = str(provider_message(final).get("content") or "")
@@ -206,6 +220,7 @@ def main() -> int:
             "catalog_id": execution.get("catalog_id"),
             "status": "passed",
             "provider_tool_choice_forced": bool(case.get("force_tool_choice", False)),
+            "provider_thinking_mode": thinking_mode or "provider_default",
             "expected_checks": len(case.get("expected", [])),
             "roundtrip_identity_echoed": True,
             "runtime_ms": round((time.perf_counter() - started) * 1000, 2),
