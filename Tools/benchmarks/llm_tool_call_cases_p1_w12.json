@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W12 seven isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W12-A009",
+      "model_code": "A009",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的稳健异常值检测工具。values=[1,2,3,4,100]，labels=[a,b,c,d,e]，method=iqr，threshold=1.5，value_unit=wt%。",
+      "expected": [
+        {"path": "output.outlier_count", "value": 1},
+        {"path": "output.outlier_indices.0", "value": 4},
+        {"path": "output.lower_fence", "value": -1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.upper_fence", "value": 7.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-A010",
+      "model_code": "A010",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的不确定度传播工具。expression=2*x+3*y；x均值10、标准不确定度0.2、normal；y均值5、标准不确定度0.1、normal；method=first_order，input_unit=mixed_SI，output_unit=kJ，coverage_probability=0.95。",
+      "expected": [
+        {"path": "output.output_estimate", "value": 35.0, "absolute_tolerance": 1e-9},
+        {"path": "output.standard_uncertainty", "value": 0.5, "absolute_tolerance": 1e-8},
+        {"path": "output.linearized_variance_closure_residual", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.method", "value": "first_order"}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-B020",
+      "model_code": "B020",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的二元相界插值工具。points为(x=0,y=1000,u=2),(x=0.5,y=1200,u=3),(x=1,y=1400,u=4)，query_value=0.25，method=linear，boundary_kind=liquidus，independent_quantity=mole_fraction_B，independent_unit=1，dependent_unit=K，source_id=FORCED-CASE，source_version=1。",
+      "expected": [
+        {"path": "output.interpolated_value", "value": 1100.0, "absolute_tolerance": 1e-12},
+        {"path": "output.first_derivative", "value": 400.0, "absolute_tolerance": 1e-12},
+        {"path": "output.propagated_standard_uncertainty", "value": 1.8027756377319946, "absolute_tolerance": 1e-12},
+        {"path": "output.pchip_minus_linear", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-B022",
+      "model_code": "B022",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的多相Gibbs能最小化工具。T=1000 K，P=101325 Pa，元素总量A=1 mol；候选为纯相ALPHA中的A_alpha(g0=0,A=1)和纯相BETA中的A_beta(g0=1000 J/mol,A=1)。",
+      "expected": [
+        {"path": "output.species_amounts_mol.A_alpha", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.species_amounts_mol.A_beta", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.total_gibbs_energy_j", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.max_abs_element_residual_mol", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-B023",
+      "model_code": "B023",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的钢系CALPHAD单状态平衡工具。composition_wt_percent={C:0.1}，temperature_k=1700，其余使用声明默认值与批准资产。",
+      "expected": [
+        {"path": "output.phase_fraction_closure_residual", "value": 0.0, "absolute_tolerance": 1e-8},
+        {"path": "output.model_asset_id", "value": "MATCALC-MC_FE-2.059-PYCALPHAD"},
+        {"path": "output.dataset_id", "value": "DS_MATCALC_MC_FE_2059"},
+        {"path": "output.database_version", "value": "mc_fe_v2.059"}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-B024",
+      "model_code": "B024",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的Scheil微偏析工具。composition_wt_percent={C:0.1}，start_temperature_k=1900，step_temperature_k=20，residual_liquid_stop_fraction=0.01。",
+      "expected": [
+        {"path": "output.converged", "value": true},
+        {"path": "output.max_abs_component_balance_residual", "value": 0.0, "absolute_tolerance": 2e-5},
+        {"path": "output.max_abs_phase_fraction_closure_residual", "value": 0.0, "absolute_tolerance": 2e-8},
+        {"path": "output.solver_version", "value": "0.3.0"}
+      ]
+    },
+    {
+      "case_id": "LLM-W12-B025",
+      "model_code": "B025",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的相图一致性校验工具。components_count=2，fixed_external_constraints=2，相区AB含ALPHA和BETA；杠杆测试两端[0.2,0.8]与[0.8,0.2]、总体[0.5,0.5]、相分数各0.5；Gibbs测试声明ALPHA稳定，候选ALPHA=-100、BETA=0 J/mol。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.check_count", "value": 3},
+        {"path": "output.violation_count", "value": 0},
+        {"path": "output.max_abs_lever_residual", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    }
+  ]
+}

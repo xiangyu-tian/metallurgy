@@ -1,0 +1,92 @@
+{
+  "schema_version": "16.0.0",
+  "supersedes": "tool_catalog_crosswalk_v15.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v15.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 93,
+    "baseline_commit": "P1-W12-pending",
+    "milestone": "P1-W12"
+  },
+  "summary": {
+    "same": 70,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 75,
+    "runtime_assets_preserved": 93
+  },
+  "entries": [
+    {
+      "runtime_model_code": "A009",
+      "runtime_name": "稳健异常值检测",
+      "catalog_id": "A009",
+      "catalog_name": "异常值检测",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A010", "G015"],
+      "proposed_tool_uid": "metallurgy.catalog.a009.robust_outlier_detection.v1"
+    },
+    {
+      "runtime_model_code": "A010",
+      "runtime_name": "标量测量模型不确定度传播",
+      "catalog_id": "A010",
+      "catalog_name": "不确定度传播",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A009", "G010"],
+      "proposed_tool_uid": "metallurgy.catalog.a010.uncertainty_propagation.v1"
+    },
+    {
+      "runtime_model_code": "B020",
+      "runtime_name": "二元相界保形插值",
+      "catalog_id": "B020",
+      "catalog_name": "二元相界插值",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B019", "B027"],
+      "proposed_tool_uid": "metallurgy.catalog.b020.binary_phase_boundary_interpolation.v1"
+    },
+    {
+      "runtime_model_code": "B022",
+      "runtime_name": "多元多相Gibbs能最小化",
+      "catalog_id": "B022",
+      "catalog_name": "多元多相Gibbs能最小化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B013", "B014", "B023"],
+      "proposed_tool_uid": "metallurgy.catalog.b022.multiphase_gibbs_minimization.v1"
+    },
+    {
+      "runtime_model_code": "B023",
+      "runtime_name": "钢系CALPHAD单状态平衡",
+      "catalog_id": "B023",
+      "catalog_name": "CALPHAD平衡计算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B022", "B024", "F001", "F002", "F004"],
+      "proposed_tool_uid": "metallurgy.catalog.b023.calphad_equilibrium_state.v1"
+    },
+    {
+      "runtime_model_code": "B024",
+      "runtime_name": "Scheil–Gulliver微偏析路径",
+      "catalog_id": "B024",
+      "catalog_name": "Scheil凝固模拟",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B023", "B025", "F004"],
+      "proposed_tool_uid": "metallurgy.catalog.b024.scheil_microsegregation.v1"
+    },
+    {
+      "runtime_model_code": "B025",
+      "runtime_name": "相图热力学一致性校验",
+      "catalog_id": "B025",
+      "catalog_name": "相图一致性校验",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B018", "B019", "B022", "B023"],
+      "proposed_tool_uid": "metallurgy.catalog.b025.phase_diagram_consistency_validation.v1"
+    }
+  ]
+}

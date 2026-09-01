@@ -54,15 +54,15 @@ class P1W5BCastingThermalDataTests(unittest.TestCase):
         registry = ModelRegistry()
         registry.discover()
         self.assertEqual(registry.get_counts(), {
-            "registered_count": 86,
-            "runtime_tool_count": 86,
-            "catalog_coverage_count": 68,
-            "qualified_executable_count": 86,
-            "implementation_qualified_count": 86,
-            "data_required_count": 30,
-            "data_qualified_count": 30,
-            "interface_qualified_count": 86,
-            "fully_eligible_count": 86,
+            "registered_count": 93,
+            "runtime_tool_count": 93,
+            "catalog_coverage_count": 75,
+            "qualified_executable_count": 93,
+            "implementation_qualified_count": 93,
+            "data_required_count": 32,
+            "data_qualified_count": 32,
+            "interface_qualified_count": 93,
+            "fully_eligible_count": 93,
         })
 
     def test_source_asset_is_versioned_licensed_and_excludes_restricted_ds042(self):
