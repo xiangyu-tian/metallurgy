@@ -2,7 +2,7 @@
 
 ## 实施边界
 
-本协议覆盖P1-W7完成后的60个已注册且最终合格工具，表格主能力目录覆盖56项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
+本协议覆盖P1-W8完成后的67个已注册且最终合格工具，表格主能力目录覆盖63项。保留旧 `/invoke` 接口，并以新增接口承载四维资格、执行追踪和大模型function calling。新增工具必须先有蓝图；数据必需型工具还必须先明确数据集、数据库表和Repository契约。
 
 ## 模型卡
 
@@ -190,6 +190,24 @@
 
 `D012`、`D013` 分别使用版本化Mn/FeO与Si/SiO2/FeO质量作用关系。渣活度、金属活度系数、温度和初始金属含量都必须显式输入；初始Mn/Si为零时对数反应商无定义，调用被拒绝。`D013` 的公开来源为ESR参考体系，不得冒充BOF企业标定。`D014` 函数名为 `metallurgy_estimate_tfe_iron_loss`，只支持FeO、Fe2O3、Fe3O4和显式金属Fe夹带，必须把氧化态铁损与金属夹带分项返回；不计算FeO活度、在线收得率优化或工艺控制设定值。
 
+#### D007/D015/D016脱碳—炉气—氧利用率调用约束
+
+`D007` 函数名为 `metallurgy_integrate_bof_decarburization_rate`。调用者必须显式给出初始金属浴/碳、逐段供氧流量、脱碳氧效率、CO2比例以及参数来源和版本；动力学速率上限未知时可以省略，但不得由大模型猜测。D007读取数据库中的C原子量，只在供氧上限、可选动力学上限和剩余碳上限之间取最小值，不直接解释枪位或炉气信号。
+
+`D015` 函数名为 `metallurgy_calculate_bof_furnace_gas`，接受D007逐段 `carbon_removed_kmol`，按显式CO2比例和理想气体状态计算CO/CO2体积与流量。它不包含漏风、蒸汽、粉尘或二次燃烧区混气。`D016` 函数名为 `metallurgy_audit_bof_oxygen_utilization`；所有有用耗氧和损失必须使用同一 `kmol O2` 基准，同一碳耗氧不得同时从D007和D015重复加入。
+
+#### E005/E011高炉氢平衡与炉顶气利用率调用约束
+
+`E005` 函数名为 `metallurgy_balance_bf_hydrogen`。输入/输出流股的键是A002可解析的中性化学式，值为统一统计基准下的kmol；指定炉顶气流股必须含正的H2或H2O。E005先审计全流程氢原子闭合，再单独报告炉顶气H2/H2O利用率。
+
+`E011` 函数名为 `metallurgy_calculate_bf_reducing_gas_utilization`。样本时间必须严格递增；`full_gas` 的组成和必须为1，`reactive_pair_subset` 允许省略惰性组分但组成和不能超过1。它只计算 `CO2/(CO+CO2)` 与 `H2O/(H2+H2O)` 及首末趋势，不执行干湿基换算，也不替代E005总氢平衡。
+
+#### G001/G002数值离散调用约束
+
+`G001` 函数名为 `metallurgy_plan_mesh_scale_and_gci`。物理特征尺度及跨尺度最低单元数必须由调用者给出；没有同一QOI的粗中细三个网格结果时只返回网格计划，不输出GCI。非单调收敛或观察阶非正返回 `MODEL_NOT_APPLICABLE`。
+
+`G002` 函数名为 `metallurgy_check_explicit_timestep_stability`。首版只支持正交结构网格上的显式一阶迎风对流与显式中心扩散；速度/扩散率数组必须与网格维数一致。隐式、高阶、非结构网格或耦合源项问题不得套用其稳定结论。
+
 ### `POST /api/v1/models/{model_code}/validate`
 
 请求：
@@ -278,19 +296,19 @@
 
 ```json
 {
-  "registered_count": 60,
-  "runtime_tool_count": 60,
-  "catalog_coverage_count": 56,
-  "qualified_executable_count": 60,
-  "implementation_qualified_count": 60,
-  "data_required_count": 29,
-  "data_qualified_count": 29,
-  "interface_qualified_count": 60,
-  "fully_eligible_count": 60
+  "registered_count": 67,
+  "runtime_tool_count": 67,
+  "catalog_coverage_count": 63,
+  "qualified_executable_count": 67,
+  "implementation_qualified_count": 67,
+  "data_required_count": 30,
+  "data_qualified_count": 30,
+  "interface_qualified_count": 67,
+  "fully_eligible_count": 67
 }
 ```
 
-这些值由注册中心实时计算，不得在运行时代码中写死。当前29个数据必需型工具均通过数据库Repository执行并返回记录级溯源；本波D005/D014读取IUPAC原子量记录，D010–D013读取版本化公开关联参数，D006是显式输入公式工具。数据后端不可用、参数集缺失或温度超批准域时均失败关闭。
+这些值由注册中心实时计算，不得在运行时代码中写死。当前30个数据必需型工具均通过数据库Repository执行并返回记录级溯源；D007新增复用既有IUPAC C原子量记录，本波没有数据库写入或迁移。D015/D016/E005/E011/G001/G002都是显式输入公式/算法工具，不内置企业参数。数据后端不可用、参数集缺失或超批准域时均失败关闭。
 
 历史错误码在注册中心统一归一化，不要求 17 个旧模型同时重写。
 
@@ -302,6 +320,6 @@
 python Tools/run_baseline_tests.py
 ```
 
-测试包含原17个黄金种子回归、原30项资产保留、当前60工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
+测试包含原17个黄金种子回归、原30项资产保留、当前67工具资格测试、四维数据资格、function-tool契约、自动生成异常输入，以及三种实验模式的调用闭环。各波新增工具另有专项准入测试和隔离大模型调用用例。
 
 黄金算例源文件：`Tools/benchmarks/golden_cases.json`。

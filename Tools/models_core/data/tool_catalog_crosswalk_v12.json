@@ -1,0 +1,92 @@
+{
+  "schema_version": "12.0.0",
+  "supersedes": "tool_catalog_crosswalk_v11.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v11.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 67,
+    "baseline_commit": "P1-W8-pending",
+    "milestone": "P1-W8"
+  },
+  "summary": {
+    "same": 58,
+    "catalog_equivalent_different_runtime_code": 5,
+    "scope_variant": 1,
+    "extension": 3,
+    "catalog_entries_covered": 63,
+    "runtime_assets_preserved": 67
+  },
+  "entries": [
+    {
+      "runtime_model_code": "D007",
+      "runtime_name": "脱碳速率模型",
+      "catalog_id": "D007",
+      "catalog_name": "脱碳速率模型",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D001", "D015", "D016"],
+      "proposed_tool_uid": "metallurgy.catalog.d007.decarburization_rate.v1"
+    },
+    {
+      "runtime_model_code": "D015",
+      "runtime_name": "炉气生成量",
+      "catalog_id": "D015",
+      "catalog_name": "炉气生成量",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D007", "D016"],
+      "proposed_tool_uid": "metallurgy.catalog.d015.furnace_gas_generation.v1"
+    },
+    {
+      "runtime_model_code": "D016",
+      "runtime_name": "氧利用率计算",
+      "catalog_id": "D016",
+      "catalog_name": "氧利用率计算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["D001", "D007", "D015"],
+      "proposed_tool_uid": "metallurgy.catalog.d016.oxygen_utilization.v1"
+    },
+    {
+      "runtime_model_code": "E005",
+      "runtime_name": "高炉氢平衡",
+      "catalog_id": "E005",
+      "catalog_name": "高炉氢平衡",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["E003", "E004", "E011"],
+      "proposed_tool_uid": "metallurgy.catalog.e005.bf_hydrogen_balance.v1"
+    },
+    {
+      "runtime_model_code": "E011",
+      "runtime_name": "CO/CO2及H2/H2O利用率",
+      "catalog_id": "E011",
+      "catalog_name": "CO/CO2利用率",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["E003", "E004", "E005"],
+      "proposed_tool_uid": "metallurgy.catalog.e011.reducing_gas_utilization.v1"
+    },
+    {
+      "runtime_model_code": "G001",
+      "runtime_name": "网格尺度估计",
+      "catalog_id": "G001",
+      "catalog_name": "网格尺度估计",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C003", "F005", "G002"],
+      "proposed_tool_uid": "metallurgy.catalog.g001.mesh_scale_gci.v1"
+    },
+    {
+      "runtime_model_code": "G002",
+      "runtime_name": "时间步与CFL校验",
+      "catalog_id": "G002",
+      "catalog_name": "时间步与CFL校验",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C003", "F005", "G001"],
+      "proposed_tool_uid": "metallurgy.catalog.g002.explicit_timestep_stability.v1"
+    }
+  ]
+}

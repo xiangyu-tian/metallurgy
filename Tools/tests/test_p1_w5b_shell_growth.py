@@ -128,15 +128,15 @@ class P1W5BShellGrowthTests(unittest.TestCase):
         self.assertEqual(
             self.registry.get_counts(),
             {
-                "registered_count": 60,
-                "runtime_tool_count": 60,
-                "catalog_coverage_count": 56,
-                "qualified_executable_count": 60,
-                "implementation_qualified_count": 60,
-                "data_required_count": 29,
-                "data_qualified_count": 29,
-                "interface_qualified_count": 60,
-                "fully_eligible_count": 60,
+                "registered_count": 67,
+                "runtime_tool_count": 67,
+                "catalog_coverage_count": 63,
+                "qualified_executable_count": 67,
+                "implementation_qualified_count": 67,
+                "data_required_count": 30,
+                "data_qualified_count": 30,
+                "interface_qualified_count": 67,
+                "fully_eligible_count": 67,
             },
         )
         model = self.registry.get("F005")
@@ -298,8 +298,8 @@ class P1W5BShellGrowthTests(unittest.TestCase):
         manifest_response = self.client.get("/api/v1/tools")
         self.assertEqual(manifest_response.status_code, 200)
         manifest = manifest_response.json()
-        self.assertEqual(manifest["total"], 60)
-        self.assertEqual(manifest["catalog_coverage_count"], 56)
+        self.assertEqual(manifest["total"], 67)
+        self.assertEqual(manifest["catalog_coverage_count"], 63)
         definition = next(item for item in manifest["tools"] if item["model_code"] == "F005")
         self.assertEqual(definition["function"]["name"], "metallurgy_solve_1d_shell_growth")
         self.assertEqual(definition["catalog_id"], "F005")

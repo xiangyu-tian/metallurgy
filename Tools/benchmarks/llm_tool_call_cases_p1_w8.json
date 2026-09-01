@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W8 D007/D015/D016/E005/E011/G001/G002 isolated provider-forced function-call smoke tests; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W8-D007",
+      "model_code": "D007",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的脱碳速率工具。initial_metal_mass_kg=1000，initial_carbon_mass_fraction=0.04，carbon_to_co2_fraction=0，parameter_source严格为qualification fixture based on explicit measured inputs，parameter_version严格为P1-W8-v1。segments数组只有一项：name=oxygen_limited、duration_s=10、oxygen_flow_kmol_s=0.1、decarburization_oxygen_efficiency=1；不得添加kinetic_rate_limit_kg_s或其他字段。",
+      "expected": [
+        {"path": "output.total_carbon_removed_kg", "value": 24.022, "absolute_tolerance": 1e-10},
+        {"path": "output.total_carbon_removed_kmol", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.total_oxygen_consumed_by_decarburization_kmol", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.time_history.0.controlling_mode", "value": "oxygen_supply"}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-D015",
+      "model_code": "D015",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的炉气生成量工具。gas_temperature_k=1873.15，gas_pressure_pa=101325。decarburization_segments数组只有一项：name=co、duration_s=10、carbon_removed_kmol=1、carbon_to_co2_fraction=0。不得添加upstream_execution_id或其他字段。",
+      "expected": [
+        {"path": "output.total_co_kmol", "value": 1.0, "absolute_tolerance": 1e-12},
+        {"path": "output.total_co2_kmol", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.total_oxygen_consumption_kmol", "value": 0.5, "absolute_tolerance": 1e-12},
+        {"path": "output.total_normal_volume_m3", "value": 22.413969545014137, "absolute_tolerance": 1e-10}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-D016",
+      "model_code": "D016",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的氧利用率工具。actual_oxygen_supply_kmol=100；useful_oxygen_components_kmol_o2对象严格为carbon=60、silicon=20。不得添加损失分项、执行ID或其他字段。",
+      "expected": [
+        {"path": "output.total_useful_oxygen_kmol", "value": 80.0, "absolute_tolerance": 1e-12},
+        {"path": "output.oxygen_utilization_fraction", "value": 0.8, "absolute_tolerance": 1e-12},
+        {"path": "output.unaccounted_oxygen_kmol", "value": 20.0, "absolute_tolerance": 1e-12},
+        {"path": "output.oxygen_closure_residual_kmol", "value": 0.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-E005",
+      "model_code": "E005",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的高炉氢平衡工具。basis=per_hour；input_streams数组只有{name=injection,species_kmol对象为H2=1}；output_streams数组只有{name=top_gas,species_kmol对象为H2=0.5、H2O=0.5}；top_gas_stream_name=top_gas。不得添加容差或其他字段。",
+      "expected": [
+        {"path": "output.total_input_hydrogen_atom_kmol", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.total_output_hydrogen_atom_kmol", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.top_gas_hydrogen_utilization_fraction", "value": 0.5, "absolute_tolerance": 1e-12},
+        {"path": "output.passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-E011",
+      "model_code": "E011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的炉顶气利用率工具。composition_basis=mole_fraction，composition_scope=full_gas；gas_samples数组只有一项：time_s=0，composition对象严格为CO=0.5、CO2=0.5。不得添加trend_tolerance或其他气体。",
+      "expected": [
+        {"path": "output.latest_co_utilization_fraction", "value": 0.5, "absolute_tolerance": 1e-12},
+        {"path": "output.co_utilization_change", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.co_trend", "value": "single_sample"},
+        {"path": "output.sample_count", "value": 1}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-G001",
+      "model_code": "G001",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的网格尺度工具。domain_lengths_m对象严格为x=1、y=0.5；resolution_drivers数组只有{name=boundary_layer,characteristic_length_m=0.1,minimum_cells=10}。不得添加细化比、QOI或其他字段。",
+      "expected": [
+        {"path": "output.recommended_cell_size_m", "value": 0.01, "absolute_tolerance": 1e-15},
+        {"path": "output.mesh_plan.1.axis_cell_counts.x", "value": 100},
+        {"path": "output.mesh_plan.1.axis_cell_counts.y", "value": 50},
+        {"path": "output.verification_status", "value": "mesh_plan_only"}
+      ]
+    },
+    {
+      "case_id": "LLM-W8-G002",
+      "model_code": "G002",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的显式时间步稳定性工具。cell_sizes_m数组为[0.1]，time_step_s=0.05，advection_scheme=explicit_first_order_upwind，velocity_components_m_s数组为[1]，diffusion_scheme=none。不得添加扩散率、目标阈值或其他字段。",
+      "expected": [
+        {"path": "output.total_advection_cfl", "value": 0.5, "absolute_tolerance": 1e-12},
+        {"path": "output.maximum_stable_time_step_s", "value": 0.1, "absolute_tolerance": 1e-12},
+        {"path": "output.limiting_mechanism", "value": "advection_cfl"},
+        {"path": "output.stable", "value": true}
+      ]
+    }
+  ]
+}
