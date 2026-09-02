@@ -30,6 +30,7 @@ FORMULA_ONLY_IDS = {
     "D018", "D019", "D020",
     "E010", "E106", "E109", "E015", "F008", "F018",
     "F009", "F011", "F014", "G003",
+    "G004", "G008", "G009", "G010",
 }
 DATA_REQUIRED_IDS = {
     "A003", "A007",
@@ -48,13 +49,13 @@ class R0DataEligibilityAndLlmToolTests(unittest.TestCase):
 
     def test_four_dimensional_counts_are_dynamic(self):
         counts = self.registry.get_counts()
-        self.assertEqual(counts["registered_count"], 109)
-        self.assertEqual(counts["implementation_qualified_count"], 109)
-        self.assertEqual(counts["qualified_executable_count"], 109)
+        self.assertEqual(counts["registered_count"], 113)
+        self.assertEqual(counts["implementation_qualified_count"], 113)
+        self.assertEqual(counts["qualified_executable_count"], 113)
         self.assertEqual(counts["data_required_count"], 35)
         self.assertEqual(counts["data_qualified_count"], 35)
-        self.assertEqual(counts["interface_qualified_count"], 109)
-        self.assertEqual(counts["fully_eligible_count"], 109)
+        self.assertEqual(counts["interface_qualified_count"], 113)
+        self.assertEqual(counts["fully_eligible_count"], 113)
 
     def test_data_required_tools_are_database_qualified(self):
         for model_code in sorted(DATA_REQUIRED_IDS):
@@ -98,7 +99,7 @@ class R0DataEligibilityAndLlmToolTests(unittest.TestCase):
 
     def test_llm_function_definitions_are_schema_driven_and_stable(self):
         tools = self.registry.list_tool_definitions(fully_eligible_only=True)
-        self.assertEqual(len(tools), 109)
+        self.assertEqual(len(tools), 113)
         names = set()
         for tool in tools:
             function = tool["function"]
@@ -109,7 +110,7 @@ class R0DataEligibilityAndLlmToolTests(unittest.TestCase):
             self.assertEqual(function["parameters"]["type"], "object")
             self.assertFalse(function["parameters"]["additionalProperties"])
             self.assertTrue(tool["fully_eligible"])
-        self.assertEqual(len(names), 109)
+        self.assertEqual(len(names), 113)
         t001 = next(x for x in tools if x["model_code"] == "T001")
         self.assertEqual(t001["function"]["name"], "metallurgy_t001")
         self.assertIn("thermal_conductivity", t001["function"]["parameters"]["required"])
@@ -120,8 +121,8 @@ class R0DataEligibilityAndLlmToolTests(unittest.TestCase):
 
     def test_http_contract_lists_and_calls_only_fully_eligible_tools(self):
         manifest = list_llm_tools()
-        self.assertEqual(manifest["total"], 109)
-        self.assertEqual(manifest["fully_eligible_count"], 109)
+        self.assertEqual(manifest["total"], 113)
+        self.assertEqual(manifest["fully_eligible_count"], 113)
         execution = call_llm_tool("metallurgy_t001", ToolCallRequest(arguments={
             "thermal_conductivity": 20,
             "thickness": 0.1,
@@ -143,7 +144,7 @@ class R0DataEligibilityAndLlmToolTests(unittest.TestCase):
         response = client.get("/api/v1/tools")
         self.assertEqual(response.status_code, 200)
         manifest = response.json()
-        self.assertEqual(manifest["total"], 109)
+        self.assertEqual(manifest["total"], 113)
         for definition in manifest["tools"]:
             model_code = definition["model_code"]
             model = self.registry.get(model_code)

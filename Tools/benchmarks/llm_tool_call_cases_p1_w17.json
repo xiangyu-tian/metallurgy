@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W17 four isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W17-G004",
+      "model_code": "G004",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的结构化反应ODE工具。A以0.2 1/s不可逆转化为B，初始A=10、B=0 mol/m3，积分0到10 s并输出21点。",
+      "expected": [
+        {"path": "output.final_concentrations_mol_m3.A", "value": 1.353352832366127, "absolute_tolerance": 0.000002},
+        {"path": "output.final_concentrations_mol_m3.B", "value": 8.646647167633873, "absolute_tolerance": 0.000002}
+      ]
+    },
+    {
+      "case_id": "LLM-W17-G008",
+      "model_code": "G008",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的一维规则网格查表工具。表x=[0,1,3] s、y=[1,3,7] K，在x=2 s做线性插值，越界策略reject。",
+      "expected": [
+        {"path": "output.interpolated_value", "value": 5.0, "absolute_tolerance": 1e-12},
+        {"path": "output.exact_grid_point", "value": false}
+      ]
+    },
+    {
+      "case_id": "LLM-W17-G009",
+      "model_code": "G009",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的局部敏感性工具。目标G008表为y=2x+1，基准x=2，以绝对步长0.1扰动query_x，读取interpolated_value。",
+      "expected": [
+        {"path": "output.baseline_output_value", "value": 5.0, "absolute_tolerance": 1e-12},
+        {"path": "output.parameter_results.0.first_derivative", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.evaluation_count", "value": 3}
+      ]
+    },
+    {
+      "case_id": "LLM-W17-G010",
+      "model_code": "G010",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的蒙特卡洛不确定度工具。目标G008表为y=2x+1，query_x服从0到1均匀分布，固定种子20260902、256样本，读取interpolated_value并以大于2为失效。",
+      "expected": [
+        {"path": "output.sample_count", "value": 256},
+        {"path": "output.evaluation_count", "value": 256},
+        {"path": "output.random_seed", "value": 20260902}
+      ]
+    }
+  ]
+}

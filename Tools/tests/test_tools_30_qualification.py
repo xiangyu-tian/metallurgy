@@ -57,15 +57,15 @@ class ThirtyToolBaselineAndW1Tests(unittest.TestCase):
 
     def test_thirty_baseline_assets_and_four_w1_tools_are_qualified(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 109,
-            "runtime_tool_count": 109,
-            "catalog_coverage_count": 91,
-            "qualified_executable_count": 109,
-            "implementation_qualified_count": 109,
+            "registered_count": 113,
+            "runtime_tool_count": 113,
+            "catalog_coverage_count": 95,
+            "qualified_executable_count": 113,
+            "implementation_qualified_count": 113,
             "data_required_count": 35,
             "data_qualified_count": 35,
-            "interface_qualified_count": 109,
-            "fully_eligible_count": 109,
+            "interface_qualified_count": 113,
+            "fully_eligible_count": 113,
         })
         registered = {x["model_code"] for x in self.registry.list_models(True)}
         self.assertEqual(registered, EXPECTED_IDS)

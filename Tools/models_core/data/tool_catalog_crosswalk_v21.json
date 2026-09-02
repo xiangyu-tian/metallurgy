@@ -1,0 +1,62 @@
+{
+  "schema_version": "21.0.0",
+  "supersedes": "tool_catalog_crosswalk_v20.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v20.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 113,
+    "baseline_commit": "P1-W17-pending",
+    "milestone": "P1-W17"
+  },
+  "summary": {
+    "same": 88,
+    "catalog_equivalent_different_runtime_code": 7,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 95,
+    "runtime_assets_preserved": 113
+  },
+  "entries": [
+    {
+      "runtime_model_code": "G004",
+      "runtime_name": "结构化质量作用反应ODE求解",
+      "catalog_id": "G004",
+      "catalog_name": "反应动力学ODE求解",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C001", "G002", "G009", "G010"],
+      "proposed_tool_uid": "metallurgy.catalog.g004.structured_mass_action_ode.v1"
+    },
+    {
+      "runtime_model_code": "G008",
+      "runtime_name": "一二维规则网格插值与查表",
+      "catalog_id": "G008",
+      "catalog_name": "查表插值",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A004", "G009", "G010"],
+      "proposed_tool_uid": "metallurgy.catalog.g008.regular_grid_lookup.v1"
+    },
+    {
+      "runtime_model_code": "G009",
+      "runtime_name": "注册工具局部敏感性分析",
+      "catalog_id": "G009",
+      "catalog_name": "敏感性分析",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A010", "G004", "G008", "G010"],
+      "proposed_tool_uid": "metallurgy.catalog.g009.registered_tool_local_sensitivity.v1"
+    },
+    {
+      "runtime_model_code": "G010",
+      "runtime_name": "注册工具蒙特卡洛不确定度传播",
+      "catalog_id": "G010",
+      "catalog_name": "蒙特卡洛不确定度",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A010", "G004", "G008", "G009"],
+      "proposed_tool_uid": "metallurgy.catalog.g010.registered_tool_monte_carlo.v1"
+    }
+  ]
+}
