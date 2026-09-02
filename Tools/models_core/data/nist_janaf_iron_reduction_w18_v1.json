@@ -1,0 +1,160 @@
+{
+  "asset_id": "NIST-JANAF-IRON-REDUCTION-W18-V1",
+  "dataset_id": "DS_NIST_JANAF_IRON_REDUCTION_W18",
+  "name": "NIST-JANAF iron-oxide reduction Shomate segments",
+  "category": "热化学/铁氧化物还原平衡",
+  "provider": "NIST Chemistry WebBook SRD 69 / NIST-JANAF",
+  "license": "NIST Standard Reference Data terms; attribution required",
+  "version": "2026.09-w18-v1",
+  "retrieved_at": "2026-09-02",
+  "quality_grade": "A",
+  "source_note": "Exact Shomate coefficients transcribed from the cited NIST Chemistry WebBook species pages. Records are additive and reserved for E022; they do not replace legacy DS002 rows.",
+  "coefficient_units": {
+    "temperature": "K",
+    "cp": "J/(mol*K)",
+    "enthalpy": "kJ/mol",
+    "entropy": "J/(mol*K)"
+  },
+  "records": [
+    {
+      "species_id": "Fe",
+      "phase": "solid_alpha_delta",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 700.0,
+      "source_record_key": "NIST-C7439896-FE-ALPHA-298-700",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C7439896&Table=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; alpha-delta iron; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 18.42868, "B": 24.64301, "C": -8.913720, "D": 9.664706, "E": -0.012643, "F": -6.573022, "G": 42.51488, "H": 0.0}
+    },
+    {
+      "species_id": "Fe",
+      "phase": "solid_alpha_delta",
+      "temperature_min_k": 700.0,
+      "temperature_max_k": 1042.0,
+      "source_record_key": "NIST-C7439896-FE-ALPHA-700-1042",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C7439896&Table=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; alpha-delta iron; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": -57767.65, "B": 137919.7, "C": -122773.2, "D": 38682.42, "E": 3993.080, "F": 24078.67, "G": -87364.01, "H": 0.0}
+    },
+    {
+      "species_id": "Fe",
+      "phase": "solid_alpha_delta",
+      "temperature_min_k": 1042.0,
+      "temperature_max_k": 1100.0,
+      "source_record_key": "NIST-C7439896-FE-ALPHA-1042-1100",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C7439896&Table=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; alpha-delta iron; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": -325.8859, "B": 28.92876, "C": 0.0, "D": 0.0, "E": 411.9629, "F": 745.8231, "G": 241.8766, "H": 0.0}
+    },
+    {
+      "species_id": "FeO",
+      "phase": "solid",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 1650.0,
+      "source_record_key": "NIST-C1345251-FEO-SOLID-298-1650",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1345251&Plot=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; iron monoxide; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 45.75120, "B": 18.78553, "C": -5.952201, "D": 0.852779, "E": -0.081265, "F": -286.7429, "G": 110.3120, "H": -272.0441}
+    },
+    {
+      "species_id": "Fe2O3",
+      "phase": "solid",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 950.0,
+      "source_record_key": "NIST-C1317608-FE2O3-298-950",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1317608&Mask=2",
+      "reference_text": "Chase, 1998; hematite; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 93.43834, "B": 108.3577, "C": -50.86447, "D": 25.58683, "E": -1.611330, "F": -863.2094, "G": 161.0719, "H": -825.5032}
+    },
+    {
+      "species_id": "Fe2O3",
+      "phase": "solid",
+      "temperature_min_k": 950.0,
+      "temperature_max_k": 1050.0,
+      "source_record_key": "NIST-C1317608-FE2O3-950-1050",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1317608&Mask=2",
+      "reference_text": "Chase, 1998; hematite; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 150.6240, "B": 0.0, "C": 0.0, "D": 0.0, "E": 0.0, "F": -875.6066, "G": 252.8814, "H": -825.5032}
+    },
+    {
+      "species_id": "Fe2O3",
+      "phase": "solid",
+      "temperature_min_k": 1050.0,
+      "temperature_max_k": 2500.0,
+      "source_record_key": "NIST-C1317608-FE2O3-1050-2500",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1317608&Mask=2",
+      "reference_text": "Chase, 1998; hematite; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 110.9362, "B": 32.04714, "C": -9.192333, "D": 0.901506, "E": 5.433677, "F": -843.1471, "G": 228.3548, "H": -825.5032}
+    },
+    {
+      "species_id": "Fe3O4",
+      "phase": "solid",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 900.0,
+      "source_record_key": "NIST-C1309382-FE3O4-298-900",
+      "source_url": "https://webbook.nist.gov/cgi/formula?ID=C1309382&Table=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; magnetite; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 104.2096, "B": 178.5108, "C": 10.61510, "D": 1.132534, "E": -0.994202, "F": -1163.336, "G": 212.0585, "H": -1120.894}
+    },
+    {
+      "species_id": "Fe3O4",
+      "phase": "solid",
+      "temperature_min_k": 900.0,
+      "temperature_max_k": 3000.0,
+      "source_record_key": "NIST-C1309382-FE3O4-900-3000",
+      "source_url": "https://webbook.nist.gov/cgi/formula?ID=C1309382&Table=on&Type=JANAFS",
+      "reference_text": "Chase, 1998; magnetite; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 200.8320, "B": 1.586435e-7, "C": -6.661682e-8, "D": 9.452452e-9, "E": 3.186020e-8, "F": -1174.135, "G": 388.0790, "H": -1120.894}
+    },
+    {
+      "species_id": "CO",
+      "phase": "gas",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 1300.0,
+      "source_record_key": "NIST-C630080-CO-GAS-298-1300",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C630080&Mask=1&Plot=on&Type=JANAFG",
+      "reference_text": "Chase, 1998; carbon monoxide; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 25.56759, "B": 6.096130, "C": 4.054656, "D": -2.671301, "E": 0.131021, "F": -118.0089, "G": 227.3665, "H": -110.5271}
+    },
+    {
+      "species_id": "CO2",
+      "phase": "gas",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 1200.0,
+      "source_record_key": "NIST-C124389-CO2-GAS-298-1200",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C124389&Mask=1&Table=on&Type=JANAFG",
+      "reference_text": "Chase, 1998; carbon dioxide; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 24.99735, "B": 55.18696, "C": -33.69137, "D": 7.948387, "E": -0.136638, "F": -403.6075, "G": 228.2431, "H": -393.5224}
+    },
+    {
+      "species_id": "H2",
+      "phase": "gas",
+      "temperature_min_k": 298.0,
+      "temperature_max_k": 1000.0,
+      "source_record_key": "NIST-C1333740-H2-GAS-298-1000",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1333740&Mask=1",
+      "reference_text": "Chase, 1998; hydrogen; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 33.066178, "B": -11.363417, "C": 11.432816, "D": -2.772874, "E": -0.158558, "F": -9.980797, "G": 172.707974, "H": 0.0}
+    },
+    {
+      "species_id": "H2",
+      "phase": "gas",
+      "temperature_min_k": 1000.0,
+      "temperature_max_k": 2500.0,
+      "source_record_key": "NIST-C1333740-H2-GAS-1000-2500",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C1333740&Mask=1",
+      "reference_text": "Chase, 1998; hydrogen; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 18.563083, "B": 12.257357, "C": -2.859786, "D": 0.268238, "E": 1.977990, "F": -1.147438, "G": 156.288133, "H": 0.0}
+    },
+    {
+      "species_id": "H2O",
+      "phase": "gas",
+      "temperature_min_k": 500.0,
+      "temperature_max_k": 1700.0,
+      "source_record_key": "NIST-C7732185-H2O-GAS-500-1700",
+      "source_url": "https://webbook.nist.gov/cgi/cbook.cgi?ID=C7732185&Mask=1&Plot=on&Type=JANAFG",
+      "reference_text": "Chase, 1998; water vapor; NIST Chemistry WebBook SRD 69",
+      "coefficients": {"A": 30.09200, "B": 6.832514, "C": 6.793435, "D": -2.534480, "E": 0.082139, "F": -250.8810, "G": 223.3967, "H": -241.8264}
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-"""Database admission tests for the 14 data-required tools."""
+"""Database admission tests for all data-required tools in the 120-tool registry."""
 from __future__ import annotations
 
 import json

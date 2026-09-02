@@ -1,0 +1,83 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W18 seven isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W18-G005",
+      "model_code": "G005",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的OpenFOAM案例生成工具，为1.0 m×0.2 m×0.1 m板坯生成20×4×2网格的laplacianFoam v13导热案例，只返回文件清单，不执行求解器。",
+      "expected": [
+        {"path": "output.solver", "value": "laplacianFoam"},
+        {"path": "output.cell_count", "value": 160}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-G006",
+      "model_code": "G006",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的注册工具参数批处理工具，对T001热导率10、20、40 W/(m*K)的三个网格点逐项计算。",
+      "expected": [
+        {"path": "output.planned_runs", "value": 3},
+        {"path": "output.successful_runs", "value": 3}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-G011",
+      "model_code": "G011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的离线贝叶斯优化工具，在10到100 W/(m*K)内最大化T001的heat_rate_w，固定种子11、总预算9。",
+      "expected": [
+        {"path": "output.evaluation_count", "value": 9},
+        {"path": "output.best_parameters.thermal_conductivity", "value": 100.0, "absolute_tolerance": 1e-12}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-G012",
+      "model_code": "G012",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的NSGA-II工具，对T001的heat_rate_w和thermal_resistance_k_per_w做冲突目标优化，种群10、3代、固定种子5。",
+      "expected": [
+        {"path": "output.evaluation_count", "value": 40},
+        {"path": "output.stop_reason", "value": "generation_budget_reached"}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-G013",
+      "model_code": "G013",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的安全约束规则工具，校验输入100和输出99.99的质量残差是否在0.02以内。",
+      "expected": [
+        {"path": "output.passed", "value": true},
+        {"path": "output.error_count", "value": 0}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-E022",
+      "model_code": "E022",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的铁氧化物逐级还原平衡工具，计算800 K下Fe2O3到Fe3O4的CO还原，pCO=0.7 bar、pCO2=0.3 bar。",
+      "expected": [
+        {"path": "output.reaction_direction", "value": "forward_reduction"},
+        {"path": "output.actual_oxidized_to_reducing_ratio", "value": 0.4285714285714286, "absolute_tolerance": 1e-15}
+      ]
+    },
+    {
+      "case_id": "LLM-W18-H001",
+      "model_code": "H001",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的钢液脱氧平衡工具。1873 K、Al=0.05 wt%、K=1e12、Al2O3活度1、理想稀溶液，求平衡氧。",
+      "expected": [
+        {"path": "output.oxygen_mass_percent", "value": 0.0007368062997280775, "absolute_tolerance": 1e-15},
+        {"path": "output.q_over_k", "value": 1.0, "absolute_tolerance": 1e-12}
+      ]
+    }
+  ]
+}

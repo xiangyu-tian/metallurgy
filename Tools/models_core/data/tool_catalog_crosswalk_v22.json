@@ -1,0 +1,92 @@
+{
+  "schema_version": "22.0.0",
+  "supersedes": "tool_catalog_crosswalk_v21.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v21.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 120,
+    "baseline_commit": "P1-W18-pending",
+    "milestone": "P1-W18"
+  },
+  "summary": {
+    "same": 93,
+    "catalog_equivalent_different_runtime_code": 7,
+    "scope_variant": 3,
+    "extension": 17,
+    "catalog_entries_covered": 100,
+    "runtime_assets_preserved": 120
+  },
+  "entries": [
+    {
+      "runtime_model_code": "G005",
+      "runtime_name": "OpenFOAM参数化导热案例生成",
+      "catalog_id": "G005",
+      "catalog_name": "OpenFOAM参数化案例生成",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["G001", "G003", "G006"],
+      "proposed_tool_uid": "metallurgy.catalog.g005.openfoam_laplacian_case.v1"
+    },
+    {
+      "runtime_model_code": "G006",
+      "runtime_name": "注册工具参数化仿真批处理",
+      "catalog_id": "G006",
+      "catalog_name": "参数化仿真批处理",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["G005", "G011", "G012"],
+      "proposed_tool_uid": "metallurgy.catalog.g006.registered_parametric_batch.v1"
+    },
+    {
+      "runtime_model_code": "G011",
+      "runtime_name": "离线高斯过程贝叶斯优化",
+      "catalog_id": "G011",
+      "catalog_name": "贝叶斯优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["G006", "G009", "G012", "G013"],
+      "proposed_tool_uid": "metallurgy.catalog.g011.offline_gp_expected_improvement.v1"
+    },
+    {
+      "runtime_model_code": "G012",
+      "runtime_name": "约束NSGA-II多目标优化",
+      "catalog_id": "G012",
+      "catalog_name": "多目标优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F011", "G006", "G011", "G013"],
+      "proposed_tool_uid": "metallurgy.catalog.g012.constrained_nsga2.v1"
+    },
+    {
+      "runtime_model_code": "G013",
+      "runtime_name": "安全约束规则校验器",
+      "catalog_id": "G013",
+      "catalog_name": "约束检查与规则校验",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["A005", "G006", "G011", "G012"],
+      "proposed_tool_uid": "metallurgy.catalog.g013.safe_versioned_constraints.v1"
+    },
+    {
+      "runtime_model_code": "E022",
+      "runtime_name": "铁氧化物逐级还原平衡",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A006", "B005", "B009", "E002", "E011"],
+      "proposed_tool_uid": "metallurgy.extension.e022.iron_oxide_step_reduction.v1"
+    },
+    {
+      "runtime_model_code": "H001",
+      "runtime_name": "显式参数钢液脱氧平衡",
+      "catalog_id": null,
+      "catalog_name": null,
+      "mapping_status": "extension",
+      "catalog_coverage": false,
+      "related_catalog_ids": ["A003", "A007", "B009", "B014", "B015", "B016", "B017", "H002", "H003"],
+      "proposed_tool_uid": "metallurgy.extension.h001.explicit_wagner_deoxidation.v1"
+    }
+  ]
+}

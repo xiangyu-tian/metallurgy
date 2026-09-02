@@ -172,6 +172,89 @@ def shomate(species: str, temperature: float) -> tuple[dict[str, float], list[Pr
     return result, [_provenance(row, "metallurgy_v2.thermodynamic_correlation")]
 
 
+def shomate_standard_gibbs(
+    species: str,
+    phase: str,
+    temperature: float,
+    dataset_id: str = "DS_NIST_JANAF_IRON_REDUCTION_W18",
+) -> tuple[dict[str, float | str | list[float]], list[Provenance]]:
+    """Return one dataset-pinned Shomate standard-state Gibbs contribution.
+
+    Unlike :func:`shomate`, this function includes the coefficient ``H`` as
+    the 298.15 K standard formation enthalpy.  The returned quantity is
+    ``G°(T) = ΔfH°(298.15) + [H°(T)-H°(298.15)] - T*S°(T)`` and is suitable
+    for stoichiometric reaction sums when every species comes from the same
+    reviewed reference-state dataset.
+    """
+    with _cursor() as cur:
+        cur.execute(
+            """SELECT c.*, c.source_id dataset_id, d.name dataset_name,
+                      d.version dataset_version, d.checksum dataset_checksum,
+                      c.reference_text source_ref
+               FROM metallurgy_v2.thermodynamic_correlation c
+               JOIN metallurgy_v2.dataset_registry d ON d.dataset_id=c.source_id
+               WHERE c.source_id=%s AND c.species_id=%s AND c.phase=%s
+                 AND c.equation_type='SHOMATE'
+                 AND %s BETWEEN c.temperature_min_k AND c.temperature_max_k
+                 AND c.is_active=TRUE
+               ORDER BY c.temperature_min_k DESC, c.id DESC
+               LIMIT 1""",
+            (dataset_id, species, phase, temperature),
+        )
+        row = cur.fetchone()
+    if not row:
+        with _cursor() as cur:
+            cur.execute(
+                """SELECT 1 FROM metallurgy_v2.thermodynamic_correlation
+                   WHERE source_id=%s AND species_id=%s AND phase=%s
+                     AND equation_type='SHOMATE' AND is_active=TRUE LIMIT 1""",
+                (dataset_id, species, phase),
+            )
+            exists = cur.fetchone() is not None
+        code = "OUT_OF_DOMAIN" if exists else "MISSING_DATA"
+        raise RepositoryError(
+            f"数据库无{dataset_id}中 {species}/{phase} 在 {temperature:g} K 的Shomate记录",
+            code,
+        )
+    row = dict(row)
+    coefficients = row["coefficients"]
+    missing = [name for name in "ABCDEFGH" if name not in coefficients]
+    if missing:
+        raise RepositoryError(
+            f"{species}/{phase} Shomate记录缺少系数: {', '.join(missing)}",
+            "MISSING_DATA",
+        )
+    values = {name: float(coefficients[name]) for name in "ABCDEFGH"}
+    if any(not math.isfinite(value) for value in values.values()):
+        raise RepositoryError(f"{species}/{phase} Shomate记录含非有限系数", "MISSING_DATA")
+    t = temperature / 1000.0
+    cp = values["A"] + values["B"]*t + values["C"]*t**2 + values["D"]*t**3 + values["E"]/t**2
+    h_increment = (
+        values["A"]*t + values["B"]*t**2/2 + values["C"]*t**3/3
+        + values["D"]*t**4/4 - values["E"]/t + values["F"] - values["H"]
+    )
+    entropy = (
+        values["A"]*math.log(t) + values["B"]*t + values["C"]*t**2/2
+        + values["D"]*t**3/3 - values["E"]/(2*t**2) + values["G"]
+    )
+    standard_gibbs = values["H"] + h_increment - temperature * entropy / 1000.0
+    calculated = (cp, h_increment, entropy, standard_gibbs)
+    if any(not math.isfinite(value) for value in calculated):
+        raise RepositoryError(f"{species}/{phase} Shomate计算得到非有限值", "NUMERICAL_ERROR")
+    return {
+        "species": species,
+        "phase": phase,
+        "temperature_k": float(temperature),
+        "cp_j_mol_k": cp,
+        "formation_enthalpy_298_kj_mol": values["H"],
+        "enthalpy_increment_kj_mol": h_increment,
+        "entropy_j_mol_k": entropy,
+        "standard_gibbs_kj_mol": standard_gibbs,
+        "temperature_range_k": [float(row["temperature_min_k"]), float(row["temperature_max_k"])],
+        "source_record_key": str(row["source_record_key"]),
+    }, [_provenance(row, "metallurgy_v2.thermodynamic_correlation")]
+
+
 def nasa7(species: str, temperature: float) -> tuple[dict[str, Any], list[Provenance]]:
     row = correlation(species, temperature, "NASA7")
     coeffs = [float(value) for value in row["coefficients"]["a"]]

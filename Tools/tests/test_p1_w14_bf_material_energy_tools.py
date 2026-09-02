@@ -44,15 +44,15 @@ class P1W14BFMaterialEnergyTests(unittest.TestCase):
 
     def test_four_tools_pass_all_gates_and_dynamic_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 113,
-            "runtime_tool_count": 113,
-            "catalog_coverage_count": 95,
-            "qualified_executable_count": 113,
-            "implementation_qualified_count": 113,
-            "data_required_count": 35,
-            "data_qualified_count": 35,
-            "interface_qualified_count": 113,
-            "fully_eligible_count": 113,
+            "registered_count": 120,
+            "runtime_tool_count": 120,
+            "catalog_coverage_count": 100,
+            "qualified_executable_count": 120,
+            "implementation_qualified_count": 120,
+            "data_required_count": 37,
+            "data_qualified_count": 37,
+            "interface_qualified_count": 120,
+            "fully_eligible_count": 120,
         })
         for code in sorted(W14_IDS):
             with self.subTest(code=code):
@@ -172,8 +172,8 @@ class P1W14BFMaterialEnergyTests(unittest.TestCase):
         response = self.client.get("/api/v1/tools")
         self.assertEqual(response.status_code, 200)
         manifest = response.json()
-        self.assertEqual(manifest["total"], 113)
-        self.assertEqual(manifest["catalog_coverage_count"], 95)
+        self.assertEqual(manifest["total"], 120)
+        self.assertEqual(manifest["catalog_coverage_count"], 100)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         for code in sorted(W14_IDS):
             with self.subTest(code=code):
