@@ -84,15 +84,15 @@ class P1W5CSolidificationEndpointTests(unittest.TestCase):
         self.assertTrue(eligibility["scientific_validation_qualified"])
         self.assertTrue(eligibility["fully_eligible"])
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 105,
-            "runtime_tool_count": 105,
-            "catalog_coverage_count": 87,
-            "qualified_executable_count": 105,
-            "implementation_qualified_count": 105,
+            "registered_count": 109,
+            "runtime_tool_count": 109,
+            "catalog_coverage_count": 91,
+            "qualified_executable_count": 109,
+            "implementation_qualified_count": 109,
             "data_required_count": 35,
             "data_qualified_count": 35,
-            "interface_qualified_count": 105,
-            "fully_eligible_count": 105,
+            "interface_qualified_count": 109,
+            "fully_eligible_count": 109,
         })
         model = self.registry.get("F006")
         self.assertEqual(model.catalog_id, "F006")
@@ -279,8 +279,8 @@ class P1W5CSolidificationEndpointTests(unittest.TestCase):
         manifest_response = self.client.get("/api/v1/tools")
         self.assertEqual(manifest_response.status_code, 200)
         manifest = manifest_response.json()
-        self.assertEqual(manifest["total"], 105)
-        self.assertEqual(manifest["catalog_coverage_count"], 87)
+        self.assertEqual(manifest["total"], 109)
+        self.assertEqual(manifest["catalog_coverage_count"], 91)
         definition = next(
             item for item in manifest["tools"] if item["model_code"] == "F006"
         )

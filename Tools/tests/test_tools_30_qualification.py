@@ -35,10 +35,11 @@ W12_IDS = {"A009", "A010", "B020", "B022", "B023", "B024", "B025"}
 W13_IDS = {"C008", "D018", "D019", "D020"}
 W14_IDS = {"E010", "E013", "E106", "E109"}
 W15_IDS = {"E015", "E020", "F008", "F018"}
+W16_IDS = {"F009", "F011", "F014", "G003"}
 EXPECTED_IDS = (
     BASELINE_IDS | W1_IDS | W2_IDS | W3_IDS | W4_IDS
     | W5A_IDS | W5B_IDS | W5C_IDS | W6A_IDS | W6B_IDS | W7_IDS | W8_IDS | W9_IDS
-    | W10_IDS | W11_IDS | W12_IDS | W13_IDS | W14_IDS | W15_IDS
+    | W10_IDS | W11_IDS | W12_IDS | W13_IDS | W14_IDS | W15_IDS | W16_IDS
 )
 
 
@@ -56,15 +57,15 @@ class ThirtyToolBaselineAndW1Tests(unittest.TestCase):
 
     def test_thirty_baseline_assets_and_four_w1_tools_are_qualified(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 105,
-            "runtime_tool_count": 105,
-            "catalog_coverage_count": 87,
-            "qualified_executable_count": 105,
-            "implementation_qualified_count": 105,
+            "registered_count": 109,
+            "runtime_tool_count": 109,
+            "catalog_coverage_count": 91,
+            "qualified_executable_count": 109,
+            "implementation_qualified_count": 109,
             "data_required_count": 35,
             "data_qualified_count": 35,
-            "interface_qualified_count": 105,
-            "fully_eligible_count": 105,
+            "interface_qualified_count": 109,
+            "fully_eligible_count": 109,
         })
         registered = {x["model_code"] for x in self.registry.list_models(True)}
         self.assertEqual(registered, EXPECTED_IDS)

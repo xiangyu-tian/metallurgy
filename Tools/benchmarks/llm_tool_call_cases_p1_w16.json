@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W16 four isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W16-F009",
+      "model_code": "F009",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的二冷分区水量分配工具。总水量60 m3/h，三区权重1:2:3、目标移热1000/2000/3000 kW，各区水量范围0到100 m3/h，进出水293.15/303.15 K。",
+      "expected": [
+        {"path": "output.zone_results.0.water_flow_m3_h", "value": 10.0, "absolute_tolerance": 1e-10},
+        {"path": "output.zone_results.2.water_flow_m3_h", "value": 30.0, "absolute_tolerance": 1e-10},
+        {"path": "output.water_flow_closure_residual_m3_h", "value": 0.0, "absolute_tolerance": 1e-10}
+      ]
+    },
+    {
+      "case_id": "LLM-W16-F011",
+      "model_code": "F011",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的最大可行拉速工具。单流股板坯1.5×0.2 m、钢密度7400 kg/m3、有效长度30 m、设备拉速0.01到0.05 m/s、最低停留300 s、最低坯壳20 mm、增长系数0.002 m/sqrt(s)、可用冷却2000 kW、单位移热50 kJ/kg。",
+      "expected": [
+        {"path": "output.recommended_casting_speed_m_s", "value": 0.018018018018018014, "absolute_tolerance": 1e-14},
+        {"path": "output.required_cooling_power_kw", "value": 2000.0, "absolute_tolerance": 1e-9},
+        {"path": "output.throughput_t_h", "value": 144.0, "absolute_tolerance": 1e-10}
+      ]
+    },
+    {
+      "case_id": "LLM-W16-F014",
+      "model_code": "F014",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的分层热应力工具。自平衡膜模式、参考温度500 K；等权热层1000 K和冷层500 K，E=200 GPa、线膨胀系数1e-5 1/K、屈服1 GPa。",
+      "expected": [
+        {"path": "output.common_total_strain", "value": 0.0025, "absolute_tolerance": 1e-14},
+        {"path": "output.maximum_tensile_stress_pa", "value": 500000000.0, "absolute_tolerance": 0.001},
+        {"path": "output.maximum_compressive_stress_pa", "value": -500000000.0, "absolute_tolerance": 0.001}
+      ]
+    },
+    {
+      "case_id": "LLM-W16-G003",
+      "model_code": "G003",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的一维瞬态导热PDE工具。1 m域、10节点、10 s、步长0.1 s，rho=1000 kg/m3、cp=1000 J/kg/K、k=10 W/m/K，均匀初温500 K，两侧零入域热流。",
+      "expected": [
+        {"path": "output.mean_temperature_k", "value": 500.0, "absolute_tolerance": 1e-12},
+        {"path": "output.energy_closure_residual_j_m2", "value": 0.0, "absolute_tolerance": 1e-12},
+        {"path": "output.time_steps", "value": 100}
+      ]
+    }
+  ]
+}

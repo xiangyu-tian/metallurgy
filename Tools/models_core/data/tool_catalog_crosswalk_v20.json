@@ -1,0 +1,62 @@
+{
+  "schema_version": "20.0.0",
+  "supersedes": "tool_catalog_crosswalk_v19.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v19.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 109,
+    "baseline_commit": "P1-W16-pending",
+    "milestone": "P1-W16"
+  },
+  "summary": {
+    "same": 84,
+    "catalog_equivalent_different_runtime_code": 7,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 91,
+    "runtime_assets_preserved": 109
+  },
+  "entries": [
+    {
+      "runtime_model_code": "F009",
+      "runtime_name": "二冷分区水量分配",
+      "catalog_id": "F009",
+      "catalog_name": "二冷分区水量分配",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F005", "F007", "F008", "F011"],
+      "proposed_tool_uid": "metallurgy.catalog.f009.secondary_cooling_zone_allocation.v1"
+    },
+    {
+      "runtime_model_code": "F011",
+      "runtime_name": "最大可行拉速",
+      "catalog_id": "F011",
+      "catalog_name": "拉速优化",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F005", "F006", "F008", "F009", "G012"],
+      "proposed_tool_uid": "metallurgy.catalog.f011.maximum_feasible_casting_speed.v1"
+    },
+    {
+      "runtime_model_code": "F014",
+      "runtime_name": "分层热应力与应变",
+      "catalog_id": "F014",
+      "catalog_name": "铸坯热应力/应变",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F005", "G003"],
+      "proposed_tool_uid": "metallurgy.catalog.f014.layered_thermal_stress.v1"
+    },
+    {
+      "runtime_model_code": "G003",
+      "runtime_name": "一维瞬态导热PDE",
+      "catalog_id": "G003",
+      "catalog_name": "一维传热PDE求解",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F005", "F014", "G001", "G002", "T001", "T003"],
+      "proposed_tool_uid": "metallurgy.catalog.g003.one_dimensional_heat_pde.v1"
+    }
+  ]
+}
