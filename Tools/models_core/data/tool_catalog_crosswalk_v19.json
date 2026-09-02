@@ -1,0 +1,62 @@
+{
+  "schema_version": "19.0.0",
+  "supersedes": "tool_catalog_crosswalk_v18.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v18.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 105,
+    "baseline_commit": "P1-W15-pending",
+    "milestone": "P1-W15"
+  },
+  "summary": {
+    "same": 80,
+    "catalog_equivalent_different_runtime_code": 7,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 87,
+    "runtime_assets_preserved": 105
+  },
+  "entries": [
+    {
+      "runtime_model_code": "E015",
+      "runtime_name": "单工况高炉料柱透气阻力指数",
+      "catalog_id": "E015",
+      "catalog_name": "透气性指数",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["E001", "E014"],
+      "proposed_tool_uid": "metallurgy.catalog.e015.bf_permeability_resistance_index.v1"
+    },
+    {
+      "runtime_model_code": "E020",
+      "runtime_name": "高炉活动数据碳足迹账本",
+      "catalog_id": "E020",
+      "catalog_name": "高炉碳足迹",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["E001", "E003", "E005"],
+      "proposed_tool_uid": "metallurgy.catalog.e020.bf_carbon_footprint.v1"
+    },
+    {
+      "runtime_model_code": "F008",
+      "runtime_name": "连铸二冷总水量",
+      "catalog_id": "F008",
+      "catalog_name": "二冷总水量计算",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["F003", "F005", "F007", "F009"],
+      "proposed_tool_uid": "metallurgy.catalog.f008.total_secondary_cooling_water.v1"
+    },
+    {
+      "runtime_model_code": "F018",
+      "runtime_name": "球形夹杂物上浮时间",
+      "catalog_id": "F018",
+      "catalog_name": "夹杂物上浮时间",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["C002", "C008", "C010"],
+      "proposed_tool_uid": "metallurgy.catalog.f018.inclusion_float_time.v1"
+    }
+  ]
+}

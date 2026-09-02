@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W15 four isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W15-E015",
+      "model_code": "E015",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的单工况高炉料柱透气阻力指数工具。下部/炉顶绝压350000/200000 Pa，标况气量50 Nm3/s，平均气温1000 K，截面积80 m2，气体密度0.45 kg/m3、黏度4e-5 Pa·s，有效高度20 m。",
+      "expected": [
+        {"path": "output.pressure_drop_pa", "value": 150000.0, "absolute_tolerance": 1e-12},
+        {"path": "output.superficial_velocity_m_s", "value": 0.8430682442214568, "absolute_tolerance": 1e-12},
+        {"path": "output.permeability_resistance_index", "value": 365786.66044300975, "absolute_tolerance": 1e-6}
+      ]
+    },
+    {
+      "case_id": "LLM-W15-E020",
+      "model_code": "E020",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的高炉活动数据碳足迹账本工具。热金属1000 t，边界blast-furnace-gate-to-gate，分配系数1；实际燃烧炼焦煤10 TJ_NCV，使用批准的W15因子集。",
+      "expected": [
+        {"path": "output.gross_emissions_kg_co2e", "value": 952795.0, "absolute_tolerance": 1e-9},
+        {"path": "output.carbon_footprint_t_co2e_per_t_hm", "value": 0.952795, "absolute_tolerance": 1e-12},
+        {"path": "output.ledger_closure_residual_kg_co2e", "value": 0.0, "absolute_tolerance": 1e-9}
+      ]
+    },
+    {
+      "case_id": "LLM-W15-F008",
+      "model_code": "F008",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的连铸二冷总水量工具。单流股板坯1.5×0.2 m，拉速0.02 m/s，钢密度7400 kg/m3，比水量1 L/kg。",
+      "expected": [
+        {"path": "output.steel_mass_flow_kg_s", "value": 44.4, "absolute_tolerance": 1e-12},
+        {"path": "output.total_water_mass_flow_kg_s", "value": 44.3112, "absolute_tolerance": 1e-12},
+        {"path": "output.total_water_flow_m3_h", "value": 159.84, "absolute_tolerance": 1e-10}
+      ]
+    },
+    {
+      "case_id": "LLM-W15-F018",
+      "model_code": "F018",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的球形夹杂物上浮时间工具。直径20微米、夹杂密度3900 kg/m3、钢液密度7000 kg/m3、黏度0.006 Pa·s、上浮距离1 m。",
+      "expected": [
+        {"path": "output.terminal_slip_velocity_m_s", "value": 0.00011231110902727246, "absolute_tolerance": 1e-15},
+        {"path": "output.float_time_s", "value": 8903.838708931014, "absolute_tolerance": 1e-6},
+        {"path": "output.can_reach_surface", "value": true}
+      ]
+    }
+  ]
+}

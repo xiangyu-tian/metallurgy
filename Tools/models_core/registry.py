@@ -56,6 +56,7 @@ class ModelRegistry:
             f"{package_prefix}.models_f",
             f"{package_prefix}.models_g",
             f"{package_prefix}.models_h_w11",
+            f"{package_prefix}.models_w15",
         ]:
             try:
                 importlib.import_module(module_name)

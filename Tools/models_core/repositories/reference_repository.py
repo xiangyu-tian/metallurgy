@@ -250,3 +250,37 @@ def process_parameters(codes: Iterable[str], parameter_set_id: str = "BOF_ENGINE
     if missing:
         raise RepositoryError(f"BOF参数集缺少: {', '.join(missing)}", "MISSING_DATA")
     return values, [_provenance(row, "metallurgy_v2.process_parameter_set") for row in rows]
+
+
+def emission_factors(
+    codes: Iterable[str],
+    factor_set_id: str = "BF_GHG_FACTORS_W15_V1",
+) -> tuple[dict[str, dict[str, Any]], list[Provenance]]:
+    """Read one immutable, approved factor record for every requested code."""
+    requested = sorted(set(codes))
+    if not requested:
+        raise RepositoryError("未请求任何排放因子", "MISSING_DATA")
+    with _cursor() as cur:
+        cur.execute(
+            """SELECT f.*, d.name dataset_name, d.version dataset_version,
+                      d.checksum dataset_checksum
+               FROM metallurgy_v2.emission_factor f
+               JOIN metallurgy_v2.dataset_registry d USING(dataset_id)
+               WHERE f.dataset_id='DS_BF_GHG_FACTORS_W15'
+                 AND f.factor_set_id=%s AND f.factor_code=ANY(%s)
+                 AND f.is_approved=TRUE
+               ORDER BY f.factor_code, f.id DESC""",
+            (factor_set_id, requested),
+        )
+        rows = [dict(row) for row in cur.fetchall()]
+    selected: dict[str, dict[str, Any]] = {}
+    provenance: list[Provenance] = []
+    for row in rows:
+        code = str(row["factor_code"])
+        if code not in selected:
+            selected[code] = row
+            provenance.append(_provenance(row, "metallurgy_v2.emission_factor"))
+    missing = sorted(set(requested) - set(selected))
+    if missing:
+        raise RepositoryError(f"排放因子集缺少: {', '.join(missing)}", "MISSING_DATA")
+    return selected, provenance
