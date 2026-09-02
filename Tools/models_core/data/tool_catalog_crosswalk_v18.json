@@ -1,0 +1,64 @@
+{
+  "schema_version": "18.0.0",
+  "supersedes": "tool_catalog_crosswalk_v17.json",
+  "storage_mode": "reviewed_delta_over_immutable_base",
+  "base_asset": "tool_catalog_crosswalk_v17.json",
+  "runtime_registry": {
+    "role": "implemented_asset_registry",
+    "registered_count_at_baseline": 101,
+    "baseline_commit": "P1-W14-pending",
+    "milestone": "P1-W14"
+  },
+  "summary": {
+    "same": 76,
+    "catalog_equivalent_different_runtime_code": 7,
+    "scope_variant": 3,
+    "extension": 15,
+    "catalog_entries_covered": 83,
+    "runtime_assets_preserved": 101
+  },
+  "entries": [
+    {
+      "runtime_model_code": "E010",
+      "runtime_name": "高炉理论炉顶煤气组成",
+      "catalog_id": "E010",
+      "catalog_name": "炉顶煤气组成",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["E003", "E004", "E005", "E011", "E012"],
+      "proposed_tool_uid": "metallurgy.catalog.e010.bf_top_gas_composition.v1"
+    },
+    {
+      "runtime_model_code": "E013",
+      "runtime_name": "风口回旋区绝热火焰温度",
+      "catalog_id": "E013",
+      "catalog_name": "风口回旋区绝热火焰温度",
+      "mapping_status": "same",
+      "catalog_coverage": true,
+      "related_catalog_ids": ["B012", "E007", "E012"],
+      "proposed_tool_uid": "metallurgy.catalog.e013.raceway_adiabatic_flame_temperature.v1"
+    },
+    {
+      "runtime_model_code": "E106",
+      "runtime_name": "完整物料型Rist操作线",
+      "catalog_id": "E006",
+      "catalog_name": "Rist操作线",
+      "mapping_status": "catalog_equivalent_different_runtime_code",
+      "catalog_coverage": true,
+      "legacy_model_codes": ["E106"],
+      "related_catalog_ids": ["E001", "E002", "E003", "E004", "E005", "E007", "E011"],
+      "proposed_tool_uid": "metallurgy.catalog.e006.complete_rist_operating_line.v1"
+    },
+    {
+      "runtime_model_code": "E109",
+      "runtime_name": "完整喷煤等效置换与边际账",
+      "catalog_id": "E009",
+      "catalog_name": "喷煤等效替代",
+      "mapping_status": "catalog_equivalent_different_runtime_code",
+      "catalog_coverage": true,
+      "legacy_model_codes": ["E109"],
+      "related_catalog_ids": ["E003", "E005", "E007"],
+      "proposed_tool_uid": "metallurgy.catalog.e009.complete_pci_replacement.v1"
+    }
+  ]
+}

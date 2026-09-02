@@ -39,15 +39,15 @@ class P1W9TransportBFTests(unittest.TestCase):
 
     def test_seven_tools_pass_all_gates_and_dynamic_counts(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 97,
-            "runtime_tool_count": 97,
-            "catalog_coverage_count": 79,
-            "qualified_executable_count": 97,
-            "implementation_qualified_count": 97,
-            "data_required_count": 33,
-            "data_qualified_count": 33,
-            "interface_qualified_count": 97,
-            "fully_eligible_count": 97,
+            "registered_count": 101,
+            "runtime_tool_count": 101,
+            "catalog_coverage_count": 83,
+            "qualified_executable_count": 101,
+            "implementation_qualified_count": 101,
+            "data_required_count": 34,
+            "data_qualified_count": 34,
+            "interface_qualified_count": 101,
+            "fully_eligible_count": 101,
         })
         for code in W9_IDS:
             with self.subTest(code=code):
@@ -178,8 +178,8 @@ class P1W9TransportBFTests(unittest.TestCase):
 
     def test_schema_http_forced_routes_and_keyword_recall_for_each_tool(self):
         manifest = self.client.get("/api/v1/tools").json()
-        self.assertEqual(manifest["total"], 97)
-        self.assertEqual(manifest["catalog_coverage_count"], 79)
+        self.assertEqual(manifest["total"], 101)
+        self.assertEqual(manifest["catalog_coverage_count"], 83)
         definitions = {item["model_code"]: item for item in manifest["tools"]}
         queries = {
             "C009": "请计算有效导热系数混合规则",

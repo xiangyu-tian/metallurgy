@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0.0",
+  "purpose": "P1-W14 four isolated provider-forced function-call smoke cases; not a research dataset",
+  "cases": [
+    {
+      "case_id": "LLM-W14-E010",
+      "model_code": "E010",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的高炉理论炉顶煤气组成工具。风口气CO/H2/N2=2/0.5/3 kmol，被还原矿石氧1.5 kmol，直接还原30%，间接还原H2分担20%，外加CO2/H2O/N2=0.1/0.05/0.2 kmol。",
+      "expected": [
+        {"path": "output.component_amounts_kmol.CO", "value": 1.61, "absolute_tolerance": 1e-12},
+        {"path": "output.component_amounts_kmol.CO2", "value": 0.94, "absolute_tolerance": 1e-12},
+        {"path": "output.wet_total_gas_kmol", "value": 6.3, "absolute_tolerance": 1e-12},
+        {"path": "output.passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W14-E106",
+      "model_code": "E106",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的完整物料型Rist操作线工具。Fe基准1 kmol、炉料氧1.5 kmol、炉顶CO/CO2=1.5/0.5 kmol，P=(0.5,0)，W=(1.1,1.0)。",
+      "expected": [
+        {"path": "output.actual_slope_mu", "value": 2.0, "absolute_tolerance": 1e-12},
+        {"path": "output.direct_reduction_fraction", "value": 0.6666666666666666, "absolute_tolerance": 1e-12},
+        {"path": "output.reducing_agent_excess_fraction", "value": 0.2, "absolute_tolerance": 1e-12},
+        {"path": "output.passed", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W14-E109",
+      "model_code": "E109",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的完整喷煤置换工具。喷煤100 kg、基准焦炭400 kg、最低结构焦200 kg；煤固定碳/燃尽/灰分=0.75/0.9/0.10，LHV=28 MJ/kg、热利用0.8、工艺吸热2；焦炭固定碳/灰分=0.85/0.12，LHV=29、热利用0.9、工艺吸热1；增量灰分上限20 kg。",
+      "expected": [
+        {"path": "output.selected_replacement_ratio", "value": 0.7941176470588236, "absolute_tolerance": 1e-12},
+        {"path": "output.theoretical_coke_replaced_kg", "value": 79.41176470588236, "absolute_tolerance": 1e-10},
+        {"path": "output.controlling_constraint", "value": "fixed_carbon"},
+        {"path": "output.feasible", "value": true}
+      ]
+    },
+    {
+      "case_id": "LLM-W14-E013",
+      "model_code": "E013",
+      "force_tool_choice": true,
+      "thinking_mode": "disabled",
+      "prompt": "强制调用唯一提供的风口回旋区绝热火焰温度工具。干风22.414 Nm3、O2=21%、风温1200 K，富氧2.2414 Nm3@298.15 K，蒸汽0.05 kmol@500 K，反应燃料C/H=0.67/0.10 kmol atoms，有效LHV=300 MJ、工艺吸热5 MJ，求根500到3500 K。",
+      "expected": [
+        {"path": "output.raft_temperature_k", "value": 2395.454565412365, "absolute_tolerance": 1e-6},
+        {"path": "output.product_gas_amounts_kmol.CO", "value": 0.67, "absolute_tolerance": 1e-12},
+        {"path": "output.product_gas_amounts_kmol.H2", "value": 0.1, "absolute_tolerance": 1e-12},
+        {"path": "output.total_product_gas_kmol", "value": 1.56, "absolute_tolerance": 1e-12}
+      ]
+    }
+  ]
+}

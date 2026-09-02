@@ -34,15 +34,15 @@ class BaselineTests(unittest.TestCase):
 
     def test_approved_assets_through_p1_w10_are_registered(self):
         self.assertEqual(self.registry.get_counts(), {
-            "registered_count": 97,
-            "runtime_tool_count": 97,
-            "catalog_coverage_count": 79,
-            "qualified_executable_count": 97,
-            "implementation_qualified_count": 97,
-            "data_required_count": 33,
-            "data_qualified_count": 33,
-            "interface_qualified_count": 97,
-            "fully_eligible_count": 97,
+            "registered_count": 101,
+            "runtime_tool_count": 101,
+            "catalog_coverage_count": 83,
+            "qualified_executable_count": 101,
+            "implementation_qualified_count": 101,
+            "data_required_count": 34,
+            "data_qualified_count": 34,
+            "interface_qualified_count": 101,
+            "fully_eligible_count": 101,
         })
 
     def test_every_model_has_complete_protocol_card(self):

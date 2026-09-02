@@ -52,6 +52,7 @@ class ModelRegistry:
             f"{package_prefix}.models_e_w8",
             f"{package_prefix}.models_e_w9",
             f"{package_prefix}.models_e_w10",
+            f"{package_prefix}.models_e_w14",
             f"{package_prefix}.models_f",
             f"{package_prefix}.models_g",
             f"{package_prefix}.models_h_w11",
