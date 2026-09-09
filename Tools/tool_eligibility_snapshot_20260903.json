@@ -1,0 +1,613 @@
+{
+  "snapshot_id": "TOOL-ELIGIBILITY-20260903-120",
+  "frozen_at": "2026-09-03",
+  "expected_registered_count": 120,
+  "status": "accepted_for_orchestration_experiment",
+  "source_reports": [
+    "engineering_cross_case_runtime_output_audit_20260903",
+    "p1_w18_final_120_tools_acceptance"
+  ],
+  "notes": "119 cross-case runtime audits passed; G005 passed its dedicated real-case artifact audit. Re-run all 120 only at final acceptance.",
+  "tools": [
+    {
+      "model_code": "A001",
+      "tool_name": "metallurgy_a001",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "A002",
+      "tool_name": "metallurgy_a002",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "A003",
+      "tool_name": "metallurgy_a003",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "A004",
+      "tool_name": "metallurgy_a004",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "A005",
+      "tool_name": "metallurgy_a005",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "A006",
+      "tool_name": "metallurgy_a006",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A007",
+      "tool_name": "metallurgy_a007",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A008",
+      "tool_name": "metallurgy_impute_missing_values",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A009",
+      "tool_name": "metallurgy_detect_outliers",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A010",
+      "tool_name": "metallurgy_propagate_uncertainty",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A011",
+      "tool_name": "metallurgy_solve_reaction_stoichiometry",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "A101",
+      "tool_name": "metallurgy_check_charge_valence_balance",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B001",
+      "tool_name": "metallurgy_b001",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B002",
+      "tool_name": "metallurgy_b002",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B003",
+      "tool_name": "metallurgy_b003",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B004",
+      "tool_name": "metallurgy_b004",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B005",
+      "tool_name": "metallurgy_b005",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B006",
+      "tool_name": "metallurgy_b006",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B007",
+      "tool_name": "metallurgy_b007",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B008",
+      "tool_name": "metallurgy_b008",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B009",
+      "tool_name": "metallurgy_b009",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B010",
+      "tool_name": "metallurgy_b010",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B011",
+      "tool_name": "metallurgy_b011",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B012",
+      "tool_name": "metallurgy_calculate_adiabatic_reaction_temperature",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B013",
+      "tool_name": "metallurgy_solve_ideal_gas_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B014",
+      "tool_name": "metallurgy_b014",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B015",
+      "tool_name": "metallurgy_b015",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B016",
+      "tool_name": "metallurgy_calculate_redlich_kister_activity",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B017",
+      "tool_name": "metallurgy_convert_henry_raoult_standard_state",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B018",
+      "tool_name": "metallurgy_b018",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B019",
+      "tool_name": "metallurgy_b019",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "B020",
+      "tool_name": "metallurgy_interpolate_binary_phase_boundary",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B022",
+      "tool_name": "metallurgy_minimize_multiphase_gibbs_energy",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B023",
+      "tool_name": "metallurgy_calculate_calphad_equilibrium_state",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B024",
+      "tool_name": "metallurgy_calculate_scheil_microsegregation",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B025",
+      "tool_name": "metallurgy_validate_phase_diagram_consistency",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B026",
+      "tool_name": "metallurgy_calculate_peng_robinson_fugacity",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "B027",
+      "tool_name": "metallurgy_solve_ideal_vle_bubble_dew",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C001",
+      "tool_name": "metallurgy_c001",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "C002",
+      "tool_name": "metallurgy_c002",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "C003",
+      "tool_name": "metallurgy_c003",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "C004",
+      "tool_name": "metallurgy_c004",
+      "model_version": "2.0.0"
+    },
+    {
+      "model_code": "C005",
+      "tool_name": "metallurgy_predict_grain_growth",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C006",
+      "tool_name": "metallurgy_solve_shrinking_core",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C007",
+      "tool_name": "metallurgy_predict_parabolic_oxidation",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C008",
+      "tool_name": "metallurgy_estimate_melt_viscosity",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C009",
+      "tool_name": "metallurgy_calculate_effective_thermal_conductivity",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C010",
+      "tool_name": "metallurgy_calculate_packed_bed_mass_transfer",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C011",
+      "tool_name": "metallurgy_calculate_transport_dimensionless_numbers",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C012",
+      "tool_name": "metallurgy_calculate_sphere_external_convection_transfer",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "C103",
+      "tool_name": "metallurgy_solve_fick_1d",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D001",
+      "tool_name": "metallurgy_d001",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D002",
+      "tool_name": "metallurgy_d002",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D004",
+      "tool_name": "metallurgy_calc_bof_flux_addition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D005",
+      "tool_name": "metallurgy_estimate_bof_slag_mass",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D006",
+      "tool_name": "metallurgy_calculate_slag_basicity",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D007",
+      "tool_name": "metallurgy_integrate_bof_decarburization_rate",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D010",
+      "tool_name": "metallurgy_predict_phosphorus_partition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D011",
+      "tool_name": "metallurgy_predict_sulfur_partition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D012",
+      "tool_name": "metallurgy_calculate_manganese_oxidation_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D013",
+      "tool_name": "metallurgy_calculate_silicon_oxidation_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D014",
+      "tool_name": "metallurgy_estimate_tfe_iron_loss",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D015",
+      "tool_name": "metallurgy_calculate_bof_furnace_gas",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D016",
+      "tool_name": "metallurgy_audit_bof_oxygen_utilization",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D018",
+      "tool_name": "metallurgy_optimize_bof_blowing_schedule",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D019",
+      "tool_name": "metallurgy_optimize_alloy_additions",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D020",
+      "tool_name": "metallurgy_optimize_coolant_scrap_addition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D021",
+      "tool_name": "metallurgy_balance_bof_charge",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D022",
+      "tool_name": "metallurgy_calculate_steel_yield_iron_loss",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "D023",
+      "tool_name": "metallurgy_calculate_single_alloy_addition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E001",
+      "tool_name": "metallurgy_balance_bf_burden",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E002",
+      "tool_name": "metallurgy_calc_bf_iron_balance",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E003",
+      "tool_name": "metallurgy_calc_bf_carbon_balance",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E004",
+      "tool_name": "metallurgy_calc_bf_oxygen_balance",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E005",
+      "tool_name": "metallurgy_balance_bf_hydrogen",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E006",
+      "tool_name": "metallurgy_construct_bf_rist_operating_line",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E007",
+      "tool_name": "metallurgy_audit_bf_zonal_heat_balance",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E009",
+      "tool_name": "metallurgy_calculate_pci_theoretical_replacement",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E010",
+      "tool_name": "metallurgy_calculate_bf_top_gas_composition",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E011",
+      "tool_name": "metallurgy_calculate_bf_reducing_gas_utilization",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E012",
+      "tool_name": "metallurgy_calculate_bf_tuyere_theoretical_gas",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E013",
+      "tool_name": "metallurgy_calculate_bf_raceway_raft",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E014",
+      "tool_name": "metallurgy_calculate_bf_burden_ergun_pressure_drop",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E015",
+      "tool_name": "metallurgy_calculate_bf_permeability_resistance_index",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E020",
+      "tool_name": "metallurgy_calculate_bf_carbon_footprint",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E021",
+      "tool_name": "metallurgy_calculate_boudouard_equilibrium_driving_force",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E022",
+      "tool_name": "metallurgy_calculate_iron_oxide_step_reduction_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E106",
+      "tool_name": "metallurgy_construct_complete_bf_rist_line",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "E109",
+      "tool_name": "metallurgy_calculate_complete_pci_replacement",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F001",
+      "tool_name": "metallurgy_calc_steel_liquidus_temperature",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F002",
+      "tool_name": "metallurgy_calc_steel_solidus_temperature",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F003",
+      "tool_name": "metallurgy_calc_steel_superheat",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F004",
+      "tool_name": "metallurgy_calc_solid_fraction_curve",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F005",
+      "tool_name": "metallurgy_solve_1d_shell_growth",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F006",
+      "tool_name": "metallurgy_predict_solidification_end",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F007",
+      "tool_name": "metallurgy_calc_mold_heat_flux",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F008",
+      "tool_name": "metallurgy_calculate_total_secondary_cooling_water",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F009",
+      "tool_name": "metallurgy_allocate_secondary_cooling_water",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F011",
+      "tool_name": "metallurgy_optimize_casting_speed",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F014",
+      "tool_name": "metallurgy_calculate_casting_thermal_stress",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "F018",
+      "tool_name": "metallurgy_calculate_inclusion_float_time",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G001",
+      "tool_name": "metallurgy_plan_mesh_scale_and_gci",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G002",
+      "tool_name": "metallurgy_check_explicit_timestep_stability",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G003",
+      "tool_name": "metallurgy_solve_heat_pde_1d",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G004",
+      "tool_name": "metallurgy_solve_reaction_ode",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G005",
+      "tool_name": "metallurgy_generate_openfoam_laplacian_case",
+      "model_version": "1.1.0"
+    },
+    {
+      "model_code": "G006",
+      "tool_name": "metallurgy_run_registered_parametric_batch",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G008",
+      "tool_name": "metallurgy_interpolate_lookup_table",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G009",
+      "tool_name": "metallurgy_run_local_sensitivity_analysis",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G010",
+      "tool_name": "metallurgy_run_monte_carlo_uncertainty",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G011",
+      "tool_name": "metallurgy_run_offline_bayesian_optimization",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G012",
+      "tool_name": "metallurgy_run_registered_nsga2",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "G013",
+      "tool_name": "metallurgy_validate_versioned_constraints",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "H001",
+      "tool_name": "metallurgy_calculate_steel_deoxidation_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "H002",
+      "tool_name": "metallurgy_calculate_ladle_desulfurization_equilibrium",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "H003",
+      "tool_name": "metallurgy_calculate_ladle_argon_mixing_time",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "T001",
+      "tool_name": "metallurgy_t001",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "T002",
+      "tool_name": "metallurgy_t002",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "T003",
+      "tool_name": "metallurgy_calculate_lumped_transient_temperature",
+      "model_version": "1.0.0"
+    },
+    {
+      "model_code": "T004",
+      "tool_name": "metallurgy_calculate_multilayer_thermal_resistance",
+      "model_version": "1.0.0"
+    }
+  ]
+}

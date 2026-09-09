@@ -7,12 +7,18 @@ modules, execute shell commands, or write caller-chosen filesystem paths.
 from __future__ import annotations
 
 import hashlib
+import io
 import itertools
 import json
 import math
+import os
 import random
 import re
+import shutil
+import tempfile
+import zipfile
 from copy import deepcopy
+from pathlib import Path
 from typing import Any, Iterable, Optional
 
 import numpy as np
@@ -21,6 +27,8 @@ from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, Mod
 
 
 ORCHESTRATOR_BLOCKLIST = {"G006", "G009", "G010", "G011", "G012"}
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+OPENFOAM_CASE_ROOT = PROJECT_ROOT / "outputs" / "openfoam_cases"
 
 
 def rel(kind: str, target: str, description: str) -> dict[str, str]:
@@ -290,23 +298,37 @@ class W18FormulaTool(BaseModelTool):
 
 
 class G005_OpenFOAMCaseGenerator(W18FormulaTool):
-    model_id, name, version = "G005", "OpenFOAM参数化导热案例生成", "1.0.0"
+    model_id, name, version = "G005", "OpenFOAM参数化导热案例生成", "1.1.0"
     tool_name = "metallurgy_generate_openfoam_laplacian_case"
-    description = "把受限长方体、网格、扩散率和温度边界渲染为可落盘的OpenFOAM v13 laplacianFoam完整案例清单；不写本机路径、不执行求解器。"
+    description = (
+        "把受限长方体、网格、扩散率和温度边界渲染为OpenFOAM v13 laplacianFoam完整案例；"
+        "可仅返回清单，也可安全写入项目固定目录并生成可读取ZIP；不接受调用者路径、不执行求解器。"
+    )
     applicable_boundary = (
         "OpenFOAM Foundation v13 laplacianFoam；单块正交六面体，x向定值温度，其他面零梯度；"
-        "总单元数不超过2,000,000。输出是经过结构校验的文件清单，不声称本机已运行OpenFOAM。"
+        "总单元数不超过2,000,000。落盘仅限项目outputs/openfoam_cases；同名同内容幂等复用，"
+        "同名异内容拒绝覆盖。输出是案例输入资产，不声称本机已运行OpenFOAM。"
     )
     formula_reference = "OpenFOAM v13 case hierarchy, blockMesh right-handed hexahedron and laplacianFoam field/property dictionaries"
-    source_version = "openfoam-foundation-v13-case-template-w18-v1"
+    source_version = "openfoam-foundation-v13-case-template-w18-v2"
     data_source = ["OpenFOAM Foundation v13 User Guide", "OpenFOAM v13 laplacianFoam source guide"]
     source_records = [
         {"source_id": "OPENFOAM-V13-CASE-STRUCTURE", "name": "OpenFOAM v13 case file structure", "version": "v13", "url": "https://doc.cfd.direct/openfoam/user-guide-v13/case-file-structure"},
         {"source_id": "OPENFOAM-V13-BLOCKMESH", "name": "OpenFOAM v13 blockMesh guide", "version": "v13", "url": "https://doc.cfd.direct/openfoam/user-guide-v13/blockmesh"},
         {"source_id": "OPENFOAM-V13-LAPLACIAN", "name": "OpenFOAM v13 laplacianFoam source guide", "version": "v13", "url": "https://cpp.openfoam.org/v13/dir_2eb0e56db9e71973c1240c4d553b433f.html"},
+        {"source_id": "PYTHON-ZIPFILE", "name": "Python standard-library ZIP archive format support", "version": "Python 3 standard library", "url": "https://docs.python.org/3/library/zipfile.html"},
     ]
-    failure_modes = ["案例名含路径或非法字符", "几何、扩散率、温度或时间参数越界", "网格数不是整数", "总单元数超限", "写出间隔或步长与终止时间不一致", "模板缺少必需文件或边界名不一致"]
-    independent_validation = ["blockMesh含8顶点和6个外表面且顶点顺序为右手系", "总单元数等于三向单元数乘积", "必需0/constant/system文件齐全", "边界名在网格与温度场中一致", "相同输入逐文件及总清单SHA-256一致"]
+    failure_modes = [
+        "案例名含路径或非法字符", "几何、扩散率、温度或时间参数越界", "网格数不是整数",
+        "总单元数超限", "写出间隔或步长与终止时间不一致", "模板缺少必需文件或边界名不一致",
+        "固定输出目录不可写或回读不一致", "同名案例或ZIP已存在但内容不同",
+    ]
+    independent_validation = [
+        "blockMesh含8顶点和6个外表面且顶点顺序为右手系", "总单元数等于三向单元数乘积",
+        "必需0/constant/system文件齐全且花括号闭合", "边界名在网格与温度场中一致",
+        "落盘后逐文件UTF-8回读与SHA-256复算一致", "ZIP逐项回读与目录内容一致",
+        "相同输入逐文件、总清单及ZIP SHA-256一致", "同名异内容不会覆盖已有案例",
+    ]
     dependencies = ["G001"]
     relations = [
         rel("depends_on", "G001", "网格尺度和单元总量可交由G001进一步做质量筛选"),
@@ -327,6 +349,14 @@ class G005_OpenFOAMCaseGenerator(W18FormulaTool):
         InputField("time_step_s", "时间步", "number", unit="s", min_value=1e-9, max_value=1e9),
         InputField("end_time_s", "终止时间", "number", unit="s", min_value=1e-9, max_value=1e12),
         InputField("write_interval_s", "写出间隔", "number", unit="s", min_value=1e-9, max_value=1e12),
+        InputField(
+            "artifact_mode", "案例产出模式", "string", required=False, default="manifest_only",
+            enum=["manifest_only", "directory", "directory_and_zip"],
+            description=(
+                "manifest_only仅返回内存清单；directory写入项目固定案例目录；"
+                "directory_and_zip同时生成目录和确定性ZIP。调用者不能指定输出路径"
+            ),
+        ),
     ]
     output_fields = [
         OutputField("case_name", "案例名", "string"),
@@ -337,6 +367,15 @@ class G005_OpenFOAMCaseGenerator(W18FormulaTool):
         OutputField("files", "相对路径到文件内容的映射", "object"),
         OutputField("file_sha256", "逐文件SHA-256", "object"),
         OutputField("manifest_sha256", "总清单SHA-256", "string"),
+        OutputField("artifact_mode", "实际案例产出模式", "string"),
+        OutputField("materialized", "是否已生成真实目录资产", "boolean"),
+        OutputField("artifact_reused", "是否完整复用已有同内容资产", "boolean"),
+        OutputField("case_directory", "真实案例目录绝对路径", "string", nullable=True),
+        OutputField("case_manifest_path", "案例清单文件绝对路径", "string", nullable=True),
+        OutputField("zip_path", "案例ZIP绝对路径", "string", nullable=True),
+        OutputField("zip_sha256", "案例ZIP SHA-256", "string", nullable=True),
+        OutputField("readback_verified", "是否通过目录及所需ZIP回读校验", "boolean"),
+        OutputField("structural_validation", "案例结构独立校验结果", "object"),
         OutputField("execution_steps", "受控落盘后的执行步骤", "array"),
         OutputField("model_version", "模型版本", "string"),
     ]
@@ -346,6 +385,9 @@ class G005_OpenFOAMCaseGenerator(W18FormulaTool):
         {"rule": "integer_mesh_counts_and_total_cells_at_most_2000000"},
         {"rule": "openfoam_v13_required_files_and_boundary_names"},
         {"rule": "deterministic_sha256_manifest"},
+        {"rule": "fixed_project_artifact_root_without_caller_path"},
+        {"rule": "atomic_no_overwrite_materialization_and_utf8_readback"},
+        {"rule": "deterministic_zip_content_and_sha256"},
     ]
     qualification_cases = [
         {"id": "G005-N1", "kind": "normal", "input": {"case_name": "slab_heat_01", "length_x_m": 1.0, "length_y_m": 0.2, "length_z_m": 0.1, "cells_x": 20, "cells_y": 4, "cells_z": 2, "diffusivity_m2_s": 1e-5, "left_temperature_k": 1000, "right_temperature_k": 300, "time_step_s": 0.1, "end_time_s": 10, "write_interval_s": 1}},
@@ -363,10 +405,209 @@ class G005_OpenFOAMCaseGenerator(W18FormulaTool):
             f"    location \"{location}\";\n    object {object_name};\n}}\n"
         )
 
+    @staticmethod
+    def _validate_case_structure(files: dict[str, str]) -> dict[str, Any]:
+        required = {
+            "0/T", "constant/transportProperties", "system/blockMeshDict",
+            "system/controlDict", "system/fvSchemes", "system/fvSolution",
+        }
+        required_files_present = set(files) == required
+        utf8_encodable = all(
+            isinstance(content, str)
+            and bool(content.strip())
+            and content.encode("utf-8").decode("utf-8") == content
+            for content in files.values()
+        )
+        balanced_braces = all(content.count("{") == content.count("}") for content in files.values())
+        openfoam_headers_valid = all(
+            content.startswith("FoamFile\n{") and "version 2.0;" in content and "object " in content
+            for content in files.values()
+        )
+        block_mesh = files.get("system/blockMeshDict", "")
+        temperature_field = files.get("0/T", "")
+        boundaries_consistent = all(
+            boundary in block_mesh and boundary in temperature_field
+            for boundary in ("left", "right", "insulated")
+        )
+        right_handed_hex = "hex (0 1 2 3 4 5 6 7)" in block_mesh
+        checks = {
+            "required_file_count": len(required),
+            "required_files_present": required_files_present,
+            "utf8_encodable": utf8_encodable,
+            "balanced_braces": balanced_braces,
+            "openfoam_headers_valid": openfoam_headers_valid,
+            "boundaries_consistent": boundaries_consistent,
+            "right_handed_hex": right_handed_hex,
+        }
+        checks["verified"] = all(value for key, value in checks.items() if key != "required_file_count")
+        return checks
+
+    @staticmethod
+    def _deterministic_zip(case_name: str, artifact_files: dict[str, bytes]) -> bytes:
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+            for relative_path, content in sorted(artifact_files.items()):
+                info = zipfile.ZipInfo(f"{case_name}/{relative_path}", date_time=(1980, 1, 1, 0, 0, 0))
+                info.compress_type = zipfile.ZIP_DEFLATED
+                info.create_system = 3
+                info.external_attr = 0o100644 << 16
+                archive.writestr(info, content, compress_type=zipfile.ZIP_DEFLATED, compresslevel=9)
+        return buffer.getvalue()
+
+    @staticmethod
+    def _directory_matches(directory: Path, expected_files: dict[str, bytes]) -> tuple[bool, str]:
+        if directory.is_symlink() or not directory.is_dir():
+            return False, "案例目标不是普通目录"
+        descendants = list(directory.rglob("*"))
+        if any(path.is_symlink() for path in descendants):
+            return False, "案例目录包含符号链接"
+        actual_files = {
+            path.relative_to(directory).as_posix()
+            for path in descendants
+            if path.is_file()
+        }
+        expected_names = set(expected_files)
+        if actual_files != expected_names:
+            return False, "案例目录文件集合与本次生成清单不同"
+        expected_directories = {
+            str(Path(relative_path).parent).replace("\\", "/")
+            for relative_path in expected_names
+            if Path(relative_path).parent != Path(".")
+        }
+        actual_directories = {
+            path.relative_to(directory).as_posix()
+            for path in descendants
+            if path.is_dir()
+        }
+        if actual_directories != expected_directories:
+            return False, "案例目录层级与本次生成清单不同"
+        for relative_path, expected_content in expected_files.items():
+            if (directory / relative_path).read_bytes() != expected_content:
+                return False, f"案例文件{relative_path}与本次生成内容不同"
+        return True, ""
+
+    @staticmethod
+    def _zip_matches(zip_path: Path, case_name: str, expected_files: dict[str, bytes], expected_zip: bytes) -> tuple[bool, str]:
+        if zip_path.is_symlink() or not zip_path.is_file():
+            return False, "案例ZIP目标不是普通文件"
+        actual_zip = zip_path.read_bytes()
+        if actual_zip != expected_zip:
+            return False, "案例ZIP与本次生成内容不同"
+        try:
+            with zipfile.ZipFile(io.BytesIO(actual_zip)) as archive:
+                expected_names = {f"{case_name}/{path}" for path in expected_files}
+                if set(archive.namelist()) != expected_names:
+                    return False, "案例ZIP条目集合与本次生成清单不同"
+                for relative_path, expected_content in expected_files.items():
+                    if archive.read(f"{case_name}/{relative_path}") != expected_content:
+                        return False, f"案例ZIP条目{relative_path}回读不一致"
+        except (KeyError, OSError, zipfile.BadZipFile) as exc:
+            return False, f"案例ZIP无法回读: {exc}"
+        return True, ""
+
+    @classmethod
+    def _materialize_case(
+        cls,
+        case_name: str,
+        files: dict[str, str],
+        manifest_document: dict[str, Any],
+        artifact_mode: str,
+    ) -> dict[str, Any]:
+        root = OPENFOAM_CASE_ROOT.resolve()
+        root.mkdir(parents=True, exist_ok=True)
+        case_directory = root / case_name
+        zip_path = root / f"{case_name}.zip"
+        if case_directory.parent != root or zip_path.parent != root:
+            raise ValueError("案例输出路径越出固定案例目录")
+
+        manifest_text = json.dumps(
+            manifest_document, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False,
+        ) + "\n"
+        expected_files = {
+            **{relative_path: content.encode("utf-8") for relative_path, content in files.items()},
+            "case_manifest.json": manifest_text.encode("utf-8"),
+        }
+        expected_zip = cls._deterministic_zip(case_name, expected_files)
+
+        directory_reused = False
+        zip_reused = artifact_mode != "directory_and_zip"
+        if case_directory.exists() or case_directory.is_symlink():
+            matches, reason = cls._directory_matches(case_directory, expected_files)
+            if not matches:
+                raise ValueError(f"同名案例已存在且拒绝覆盖：{reason}")
+            directory_reused = True
+        if artifact_mode == "directory_and_zip" and (zip_path.exists() or zip_path.is_symlink()):
+            matches, reason = cls._zip_matches(zip_path, case_name, expected_files, expected_zip)
+            if not matches:
+                raise ValueError(f"同名案例ZIP已存在且拒绝覆盖：{reason}")
+            zip_reused = True
+
+        if not directory_reused:
+            staging = Path(tempfile.mkdtemp(prefix=f".{case_name}.", dir=root))
+            try:
+                if staging.parent.resolve() != root:
+                    raise OSError("临时案例目录越出固定案例目录")
+                for relative_path, content in expected_files.items():
+                    destination = staging / relative_path
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(content)
+                matches, reason = cls._directory_matches(staging, expected_files)
+                if not matches:
+                    raise OSError(f"临时案例回读失败：{reason}")
+                try:
+                    staging.rename(case_directory)
+                except FileExistsError:
+                    matches, reason = cls._directory_matches(case_directory, expected_files)
+                    if not matches:
+                        raise ValueError(f"同名案例并发生成冲突且拒绝覆盖：{reason}")
+                    directory_reused = True
+            finally:
+                if staging.exists() and staging.parent.resolve() == root and staging.name.startswith(f".{case_name}."):
+                    shutil.rmtree(staging)
+
+        if artifact_mode == "directory_and_zip" and not zip_reused:
+            zip_created = False
+            try:
+                with zip_path.open("xb") as handle:
+                    zip_created = True
+                    handle.write(expected_zip)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+            except FileExistsError:
+                matches, reason = cls._zip_matches(zip_path, case_name, expected_files, expected_zip)
+                if not matches:
+                    raise ValueError(f"同名案例ZIP并发生成冲突且拒绝覆盖：{reason}")
+                zip_reused = True
+            except OSError:
+                if zip_created and zip_path.exists() and zip_path.parent == root:
+                    zip_path.unlink()
+                raise
+
+        directory_verified, directory_reason = cls._directory_matches(case_directory, expected_files)
+        if not directory_verified:
+            raise OSError(f"案例目录落盘回读失败：{directory_reason}")
+        if artifact_mode == "directory_and_zip":
+            zip_verified, zip_reason = cls._zip_matches(zip_path, case_name, expected_files, expected_zip)
+            if not zip_verified:
+                raise OSError(f"案例ZIP落盘回读失败：{zip_reason}")
+
+        return {
+            "materialized": True,
+            "artifact_reused": directory_reused and zip_reused,
+            "case_directory": str(case_directory),
+            "case_manifest_path": str(case_directory / "case_manifest.json"),
+            "zip_path": str(zip_path) if artifact_mode == "directory_and_zip" else None,
+            "zip_sha256": hashlib.sha256(expected_zip).hexdigest() if artifact_mode == "directory_and_zip" else None,
+            "readback_verified": True,
+        }
+
     def invoke(self, params: dict, context=None) -> ModelResult:
         case_name = params.get("case_name")
         if not isinstance(case_name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", case_name):
             return fail("case_name必须为1至64字符的安全标识，不得含路径分隔符")
+        artifact_mode = params.get("artifact_mode", "manifest_only")
+        if artifact_mode not in {"manifest_only", "directory", "directory_and_zip"}:
+            return fail("artifact_mode必须为manifest_only、directory或directory_and_zip")
         parsed: dict[str, float] = {}
         for key, lower, upper in (
             ("length_x_m", 1e-6, 100), ("length_y_m", 1e-6, 100), ("length_z_m", 1e-6, 100),
@@ -471,13 +712,37 @@ solvers
             "system/fvSchemes": schemes,
             "system/fvSolution": solution,
         }
-        required = {"0/T", "constant/transportProperties", "system/blockMeshDict", "system/controlDict", "system/fvSchemes", "system/fvSolution"}
-        if set(files) != required or any(not isinstance(content, str) or not content.strip() for content in files.values()):
-            return fail("生成的OpenFOAM案例缺少必需文件", "NUMERICAL_ERROR")
-        for boundary in ("left", "right", "insulated"):
-            if boundary not in block_mesh or boundary not in field:
-                return fail(f"边界{boundary}未在网格和温度场中同时声明", "NUMERICAL_ERROR")
+        structural_validation = self._validate_case_structure(files)
+        if not structural_validation["verified"]:
+            return fail("生成的OpenFOAM案例未通过必需文件、语法结构或边界一致性校验", "NUMERICAL_ERROR")
         file_hashes = {path: hashlib.sha256(content.encode("utf-8")).hexdigest() for path, content in sorted(files.items())}
+        manifest_sha256 = digest({"case_name": case_name, "files": files, "file_sha256": file_hashes})
+        manifest_document = {
+            "schema_version": "openfoam-case-manifest-v1",
+            "generator_model_code": self.model_id,
+            "generator_model_version": self.version,
+            "case_name": case_name,
+            "solver": "laplacianFoam",
+            "openfoam_version": "OpenFOAM Foundation v13",
+            "file_sha256": file_hashes,
+            "manifest_sha256": manifest_sha256,
+        }
+        artifact = {
+            "materialized": False,
+            "artifact_reused": False,
+            "case_directory": None,
+            "case_manifest_path": None,
+            "zip_path": None,
+            "zip_sha256": None,
+            "readback_verified": False,
+        }
+        if artifact_mode != "manifest_only":
+            try:
+                artifact = self._materialize_case(case_name, files, manifest_document, artifact_mode)
+            except ValueError as exc:
+                return fail(str(exc), "INVALID_INPUT")
+            except (OSError, UnicodeError, zipfile.BadZipFile) as exc:
+                return fail(f"OpenFOAM案例资产无法安全生成或回读：{exc}", "MODEL_ARTIFACT_UNAVAILABLE")
         warnings = []
         if math.isclose(parsed["left_temperature_k"], parsed["right_temperature_k"], rel_tol=0, abs_tol=1e-12):
             warnings.append(BoundaryWarning("left_temperature_k", "两端温度相同，合法案例的稳态梯度为零"))
@@ -491,9 +756,20 @@ solvers
             "cell_sizes_m": {"x": lx / cells["cells_x"], "y": ly / cells["cells_y"], "z": lz / cells["cells_z"]},
             "files": files,
             "file_sha256": file_hashes,
-            "manifest_sha256": digest({"case_name": case_name, "files": files, "file_sha256": file_hashes}),
-            "execution_steps": ["create case directory from returned relative paths", "run: blockMesh -case <caseDir>", "run: laplacianFoam -case <caseDir>"],
-            "model_version": "openfoam-foundation-v13-case-template-w18-v1",
+            "manifest_sha256": manifest_sha256,
+            "artifact_mode": artifact_mode,
+            **artifact,
+            "structural_validation": structural_validation,
+            "execution_steps": (
+                ["create case directory from returned relative paths", "run: blockMesh -case <caseDir>", "run: laplacianFoam -case <caseDir>"]
+                if artifact_mode == "manifest_only"
+                else [
+                    "case directory is already materialized and SHA-256 readback-verified",
+                    f"run: blockMesh -case \"{artifact['case_directory']}\"",
+                    f"run: laplacianFoam -case \"{artifact['case_directory']}\"",
+                ]
+            ),
+            "model_version": "openfoam-foundation-v13-case-template-w18-v2",
         }, boundary_check=BoundaryCheck(not warnings, warnings))
 
 
@@ -527,7 +803,7 @@ class G006_ParametricRegisteredToolBatch(W18FormulaTool):
     ]
     input_fields = [
         InputField("target_model_code", "目标模型码", "string"),
-        InputField("base_params", "目标基础参数", "object"),
+        InputField("base_params", "目标基础参数", "object", description="目标注册工具的完整参数对象；动态键由目标工具Schema和业务规则二次校验", json_schema={"type": "object", "additionalProperties": True}),
         InputField("parameter_grid", "参数网格", "array", items=GRID_ITEM_SCHEMA, min_items=1, max_items=4),
         InputField("max_runs", "最大运行数", "number", unit="1", min_value=1, max_value=256),
         InputField("retry_count", "失败重试次数", "number", unit="1", min_value=0, max_value=2),
@@ -682,13 +958,54 @@ class G006_ParametricRegisteredToolBatch(W18FormulaTool):
         }, boundary_check=BoundaryCheck(not warnings, warnings))
 
 
+EXPRESSION_OPERATORS = [
+    "add", "subtract", "multiply", "divide", "sum", "min", "max", "abs",
+    "less_than", "less_than_or_equal", "greater_than", "greater_than_or_equal",
+    "equal", "not_equal", "within", "and", "or", "not", "is_finite",
+]
+EXPRESSION_MAX_DEPTH = 12
+EXPRESSION_MAX_NODES = 512
+
+
+def expression_node_schema(depth: int = 0) -> dict[str, Any]:
+    """Build a finite JSON Schema matching the evaluator's depth-bounded AST."""
+    variants: list[dict[str, Any]] = [
+        {
+            "properties": {"constant": {}},
+            "required": ["constant"],
+            "additionalProperties": False,
+        },
+        {
+            "properties": {"path": {"type": "string", "minLength": 1}},
+            "required": ["path"],
+            "additionalProperties": False,
+        },
+    ]
+    if depth < EXPRESSION_MAX_DEPTH:
+        variants.append({
+            "properties": {
+                "op": {"type": "string", "enum": EXPRESSION_OPERATORS},
+                "args": {
+                    "type": "array",
+                    "items": expression_node_schema(depth + 1),
+                    "maxItems": EXPRESSION_MAX_NODES,
+                },
+            },
+            "required": ["op", "args"],
+            "additionalProperties": False,
+        })
+    # ``oneOf`` owns the exact shape; the explicit keyword also tells the
+    # contract scanner that this object is intentionally specified by variants.
+    return {"type": "object", "oneOf": variants, "additionalProperties": True}
+
+
 RULE_ITEM_SCHEMA = {
     "type": "object",
     "properties": {
         "id": {"type": "string"},
         "description": {"type": "string"},
         "severity": {"type": "string", "enum": ["error", "warning"]},
-        "assertion": {"type": "object"},
+        "assertion": expression_node_schema(),
         "recommendation": {"type": "string"},
     },
     "required": ["id", "description", "severity", "assertion", "recommendation"],
@@ -701,8 +1018,8 @@ class ExpressionError(ValueError):
 
 
 class ExpressionEvaluator:
-    MAX_DEPTH = 12
-    MAX_NODES = 512
+    MAX_DEPTH = EXPRESSION_MAX_DEPTH
+    MAX_NODES = EXPRESSION_MAX_NODES
 
     def __init__(self, context: dict[str, Any]):
         self.context = context
@@ -818,7 +1135,7 @@ class G013_ConstraintRuleValidator(W18FormulaTool):
     input_fields = [
         InputField("rule_set_id", "规则集ID", "string"),
         InputField("rule_set_version", "规则集版本", "string"),
-        InputField("context", "待校验JSON上下文", "object"),
+        InputField("context", "待校验JSON上下文", "object", description="表达式path读取的调用方JSON数据；允许动态键，不执行其中任何字符串", json_schema={"type": "object", "additionalProperties": True}),
         InputField("rules", "显式规则数组", "array", items=RULE_ITEM_SCHEMA, min_items=1, max_items=64),
     ]
     output_fields = [
@@ -976,7 +1293,7 @@ class G011_BayesianOptimization(W18FormulaTool):
     ]
     input_fields = [
         InputField("target_model_code", "目标模型码", "string"),
-        InputField("base_params", "目标基础参数", "object"),
+        InputField("base_params", "目标基础参数", "object", description="目标注册工具的完整参数对象；动态键由目标工具Schema和业务规则二次校验", json_schema={"type": "object", "additionalProperties": True}),
         InputField("variables", "连续变量", "array", items=VARIABLE_ITEM_SCHEMA, min_items=1, max_items=4),
         InputField("objective_output_path", "数值目标输出路径", "string"),
         InputField("objective_sense", "目标方向", "select", enum=["minimize", "maximize"]),
@@ -1408,7 +1725,7 @@ class G012_MultiobjectiveNSGA2(W18FormulaTool):
     ]
     input_fields = [
         InputField("target_model_code", "目标模型码", "string"),
-        InputField("base_params", "目标基础参数", "object"),
+        InputField("base_params", "目标基础参数", "object", description="目标注册工具的完整参数对象；动态键由目标工具Schema和业务规则二次校验", json_schema={"type": "object", "additionalProperties": True}),
         InputField("variables", "连续变量", "array", items=VARIABLE_ITEM_SCHEMA, min_items=1, max_items=5),
         InputField("objectives", "多目标定义", "array", items=OBJECTIVE_ITEM_SCHEMA, min_items=2, max_items=4),
         InputField("constraints", "同次目标输出约束", "array", required=False, items=CONSTRAINT_ITEM_SCHEMA, min_items=0, max_items=8),

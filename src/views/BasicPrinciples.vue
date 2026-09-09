@@ -166,18 +166,21 @@
       </div>
     </section>
   </div>
+  <LiteratureSection domainCode="basic_principles" domainName="冶金基础原理" />
   <Footer></Footer>
 </template>
 
 <script>
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
+import LiteratureSection from "@/components/LiteratureSection.vue";
 
 export default {
   name: "BasicPrinciples",
   components: {
     Header,
     Footer,
+    LiteratureSection,
   },
   data() {
     return {

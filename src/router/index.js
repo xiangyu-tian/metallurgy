@@ -98,6 +98,15 @@ const router = createRouter({
       }
     },
     {
+      path: '/experiments/tool-calling',
+      name: 'ToolCallingExperiment',
+      component: () => import('../views/ToolCallingExperiment.vue'),
+      meta: {
+        title: "大模型工具调用实验台 - 冶金平台",
+        internal: true
+      }
+    },
+    {
       path: '/basic-principles',
       name: 'BasicPrinciples',
       component: () => import('../views/BasicPrinciples.vue'),
@@ -130,25 +139,29 @@ const router = createRouter({
     {
       path: '/scene/thermodynamics',
       name: 'SceneThermodynamics',
-      component: () => import('../views/SceneThermodynamics.vue'),
+      component: () => import('../views/SceneWorkbench.vue'),
+      props: { sceneId: 'thermodynamics' },
       meta: { title: "热力学推理 - 冶金平台" }
     },
     {
       path: '/scene/converter',
       name: 'SceneConverter',
-      component: () => import('../views/SceneConverter.vue'),
+      component: () => import('../views/SceneWorkbench.vue'),
+      props: { sceneId: 'converter' },
       meta: { title: "转炉炼钢工艺优化 - 冶金平台" }
     },
     {
       path: '/scene/blastfurnace',
       name: 'SceneBlastfurnace',
-      component: () => import('../views/SceneBlastfurnace.vue'),
+      component: () => import('../views/SceneWorkbench.vue'),
+      props: { sceneId: 'blastfurnace' },
       meta: { title: "高炉低碳运行分析 - 冶金平台" }
     },
     {
       path: '/scene/casting',
       name: 'SceneCasting',
-      component: () => import('../views/SceneCasting.vue'),
+      component: () => import('../views/SceneWorkbench.vue'),
+      props: { sceneId: 'casting' },
       meta: { title: "连铸质量辅助决策 - 冶金平台" }
     },
     {
@@ -160,38 +173,58 @@ const router = createRouter({
     {
       path: '/scene/simulation',
       name: 'SceneSimulation',
-      component: () => import('../views/SceneSimulation.vue'),
-      meta: { title: "仿真与工单协同 - 冶金平台" }
+      component: () => import('../views/SceneWorkbench.vue'),
+      props: { sceneId: 'simulation' },
+      meta: { title: "仿真与工单协同 - 冶金平台", internal: true }
     },
     {
       path: '/scene/thermodynamics/tool/:toolId',
       name: 'SceneThermoTool',
-      component: () => import('../views/SceneThermoTool.vue'),
-      meta: { title: "热力学推理 - 冶金平台" }
+      redirect: '/scene',
+      meta: { title: "冶金智能计算中心 - 冶金平台", retired: true }
     },
     {
       path: '/scene/converter/tool/:toolId',
       name: 'SceneConverterTool',
-      component: () => import('../views/SceneConverterTool.vue'),
-      meta: { title: "转炉炼钢工艺优化 - 冶金平台" }
+      redirect: '/scene',
+      meta: { title: "冶金智能计算中心 - 冶金平台", retired: true }
     },
     {
       path: '/scene/blastfurnace/tool/:toolId',
       name: 'SceneBlastTool',
-      component: () => import('../views/SceneBlastTool.vue'),
-      meta: { title: "高炉低碳运行分析 - 冶金平台" }
+      redirect: '/scene',
+      meta: { title: "冶金智能计算中心 - 冶金平台", retired: true }
     },
     {
       path: '/scene/casting/tool/:toolId',
       name: 'SceneCastingTool',
-      component: () => import('../views/SceneCastingTool.vue'),
-      meta: { title: "连铸质量辅助决策 - 冶金平台" }
+      redirect: '/scene',
+      meta: { title: "冶金智能计算中心 - 冶金平台", retired: true }
     },
     {
       path: '/scene/simulation/tool/:toolId',
       name: 'SceneSimTool',
-      component: () => import('../views/SceneSimTool.vue'),
-      meta: { title: "仿真与工单协同 - 冶金平台" }
+      redirect: '/scene',
+      meta: { title: "冶金智能计算中心 - 冶金平台", retired: true }
+    },
+    // ========== 文献中心路由 ==========
+    {
+      path: '/knowledge',
+      name: 'KnowledgeCenter',
+      component: () => import('../views/KnowledgeCenter.vue'),
+      meta: { title: "专业文献中心 - 冶金平台" }
+    },
+    {
+      path: '/knowledge/documents/:documentCode',
+      name: 'KnowledgeDetail',
+      component: () => import('../views/KnowledgeDetail.vue'),
+      meta: { title: "文献详情 - 冶金平台" }
+    },
+    {
+      path: '/admin/knowledge',
+      name: 'AdminKnowledge',
+      component: () => import('../views/AdminKnowledge.vue'),
+      meta: { title: "文献管理 - 冶金平台", requiresAuth: true }
     }
   ]
 });

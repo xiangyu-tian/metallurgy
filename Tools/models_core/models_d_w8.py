@@ -14,6 +14,25 @@ R_J_PER_KMOL_K = 8314.46261815324
 NORMAL_TEMPERATURE_K = 273.15
 NORMAL_PRESSURE_PA = 101325.0
 
+OXYGEN_COMPONENT_MAP_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+OPTIONAL_OXYGEN_COMPONENT_MAP_SCHEMA = {
+    "type": "object",
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+EXECUTION_ID_MAP_SCHEMA = {
+    "type": "object",
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "string", "pattern": "^EXEC-"},
+}
+
 
 def rel(kind: str, target: str, description: str) -> dict:
     return {"type": kind, "target": target, "description": description}
@@ -439,9 +458,9 @@ class D016_OxygenUtilization(BaseModelTool):
     ]
     input_fields = [
         InputField("actual_oxygen_supply_kmol", "实供氧量", "number", unit="kmol O2", min_value=1e-12),
-        InputField("useful_oxygen_components_kmol_o2", "有用耗氧分项", "object", unit="kmol O2", description="非空对象；例如carbon、silicon、manganese、phosphorus、iron"),
-        InputField("measured_loss_components_kmol_o2", "已测损失分项", "object", required=False, unit="kmol O2", description="可选；例如offgas_O2、leak_or_purge"),
-        InputField("source_execution_ids", "分项上游执行ID", "object", required=False, description="可选；键与耗氧分项对应，值为EXEC-执行ID"),
+        InputField("useful_oxygen_components_kmol_o2", "有用耗氧分项", "object", unit="kmol O2", description="非空的分项名到非负耗氧量映射；例如carbon、silicon、manganese、phosphorus、iron", json_schema=OXYGEN_COMPONENT_MAP_SCHEMA),
+        InputField("measured_loss_components_kmol_o2", "已测损失分项", "object", required=False, unit="kmol O2", description="可选的分项名到非负损失氧映射；例如offgas_O2、leak_or_purge", json_schema=OPTIONAL_OXYGEN_COMPONENT_MAP_SCHEMA),
+        InputField("source_execution_ids", "分项上游执行ID", "object", required=False, description="可选；键与耗氧分项对应，值必须以EXEC-开头", json_schema=EXECUTION_ID_MAP_SCHEMA),
     ]
     output_fields = [
         OutputField("useful_oxygen_components_kmol_o2", "规范化有用耗氧分项", "object", "kmol O2"),

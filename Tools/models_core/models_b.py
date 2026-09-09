@@ -14,6 +14,19 @@ SCENARIO = "热力学与相平衡"
 THERMO_SOURCE = [{"source_id": "DS002", "name": "NIST-JANAF thermodynamic correlation records", "version": "1.0"}]
 REACTION_SOURCE = [{"source_id": "DS002", "name": "NIST-JANAF/Barin reaction thermochemistry records", "version": "REACTION-THERMO-2026.08-v1"}]
 
+NONNEGATIVE_COMPOSITION_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+BINARY_NONNEGATIVE_COMPOSITION_SCHEMA = {
+    **NONNEGATIVE_COMPOSITION_SCHEMA,
+    "minProperties": 2,
+    "maxProperties": 2,
+}
+
 
 def rel(kind, target, description):
     return {"type": kind, "target": target, "description": description}
@@ -339,7 +352,7 @@ class B014_IdealSolutionActivity(ThermoTool):
     independent_validation=["全部gamma=1","Gex=0","组成缩放不变"]
     dependencies=["A004"]
     relations=[rel("depends_on","A004","复用组成归一化"),rel("overlaps","B015","相同输入输出但B015含非理想相互作用")]
-    input_fields=[InputField("compositions","摩尔组成","object",unit="1",description="组元到非负摩尔份额"),InputField("temperature","温度","number",unit="K",min_value=1e-12,description="绝对温度"),InputField("standard_chemical_potentials_kj_mol","标准化学势","object",required=False,default={},unit="kJ/mol",description="缺省为0")]
+    input_fields=[InputField("compositions","摩尔组成","object",unit="1",description="组元到非负摩尔份额的非空映射，且至少一项大于0",json_schema=NONNEGATIVE_COMPOSITION_SCHEMA),InputField("temperature","温度","number",unit="K",min_value=1e-12,description="绝对温度"),InputField("standard_chemical_potentials_kj_mol","标准化学势","object",required=False,default={},unit="kJ/mol",description="组元到标准化学势的映射，省略组元按0",json_schema={"type":"object","propertyNames":{"type":"string","minLength":1},"additionalProperties":{"type":"number"}})]
     output_fields=[OutputField("normalized_compositions","归一化组成","object",description="摩尔分数"),OutputField("activity_coefficients","活度系数","object",description="全为1"),OutputField("activities","活度","object",description="等于摩尔分数"),OutputField("chemical_potentials_kj_mol","化学势","object",description="零组分为null"),OutputField("ideal_mixing_gibbs_j_mol","理想混合Gibbs能","number","J/mol","RTΣxlnx"),OutputField("excess_gibbs_j_mol","超额Gibbs能","number","J/mol","理想模型为0"),OutputField("standard_state","标准态","string",description="Raoult pure-component")]
     validation_rules=[{"rule":"A004_nonnegative_normalization","field":"compositions"},{"rule":"positive","field":"temperature"}]
     qualification_cases=[{"id":"B014-N1","kind":"normal","input":{"compositions":{"A":0.5,"B":0.5},"temperature":1000}},{"id":"B014-N2","kind":"normal","input":{"compositions":{"Fe":0.7,"C":0.3},"temperature":1800}},{"id":"B014-N3","kind":"normal","input":{"compositions":{"A":2,"B":1},"temperature":1200}},{"id":"B014-B1","kind":"boundary","input":{"compositions":{"A":1,"B":0},"temperature":1000}},{"id":"B014-F1","kind":"failure","input":{"compositions":{"A":1,"B":-1},"temperature":1000}}]
@@ -367,7 +380,7 @@ class B015_RegularSolutionActivity(ThermoTool):
     independent_validation=["Ω=0退化为B014","Gex=Ωx1x2","Gibbs-Duhem对称性"]
     dependencies=["A004","B014"]
     relations=[rel("depends_on","A004","复用组成归一化"),rel("overlaps","B014","Ω=0时严格退化为理想溶液")]
-    input_fields=[InputField("compositions","二元摩尔组成","object",unit="1",description="恰好两个组元"),InputField("temperature","温度","number",unit="K",min_value=1e-12,description="绝对温度"),InputField("omega_j_mol","相互作用参数","number",unit="J/mol",description="对称正则溶液Ω")]
+    input_fields=[InputField("compositions","二元摩尔组成","object",unit="1",description="恰好两个非负组元，且总量大于0",json_schema=BINARY_NONNEGATIVE_COMPOSITION_SCHEMA),InputField("temperature","温度","number",unit="K",min_value=1e-12,description="绝对温度"),InputField("omega_j_mol","相互作用参数","number",unit="J/mol",description="对称正则溶液Ω")]
     output_fields=[OutputField("normalized_compositions","归一化组成","object",description="二元摩尔分数"),OutputField("activity_coefficients","活度系数","object",description="正则溶液gamma"),OutputField("activities","活度","object",description="gamma*x"),OutputField("excess_gibbs_j_mol","超额Gibbs能","number","J/mol","Ωx1x2"),OutputField("ideal_mixing_gibbs_j_mol","理想混合Gibbs能","number","J/mol","RTΣxlnx"),OutputField("mixing_gibbs_j_mol","总混合Gibbs能","number","J/mol","ideal+excess"),OutputField("model","模型","string",description="symmetric binary regular solution")]
     validation_rules=[{"rule":"exact_component_count","value":2},{"rule":"positive","field":"temperature"}]
     qualification_cases=[{"id":"B015-N1","kind":"normal","input":{"compositions":{"A":0.5,"B":0.5},"temperature":1000,"omega_j_mol":10000}},{"id":"B015-N2","kind":"normal","input":{"compositions":{"Fe":0.7,"C":0.3},"temperature":1800,"omega_j_mol":0}},{"id":"B015-N3","kind":"normal","input":{"compositions":{"A":0.2,"B":0.8},"temperature":1200,"omega_j_mol":-5000}},{"id":"B015-F1","kind":"failure","input":{"compositions":{"A":0.3,"B":0.3,"C":0.4},"temperature":1000,"omega_j_mol":0}},{"id":"B015-F2","kind":"failure","input":{"compositions":{"A":1,"B":-1},"temperature":1000,"omega_j_mol":0}}]

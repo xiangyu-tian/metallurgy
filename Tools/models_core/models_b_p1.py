@@ -19,6 +19,22 @@ from .repositories.reference_repository import RepositoryError, nasa7, reaction_
 from .thermo_assets import R_J_MOL_K
 
 
+NONNEGATIVE_SPECIES_AMOUNT_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+BINARY_COMPOSITION_SCHEMA = {
+    "type": "object",
+    "minProperties": 2,
+    "maxProperties": 2,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+
 def _reaction_species_key(item: dict[str, Any]) -> str:
     phase = str(item.get("phase") or "").strip().lower()
     return f"{item['species']}({phase})" if phase else str(item["species"])
@@ -96,7 +112,7 @@ class B012_AdiabaticReactionTemperature(ThermoTool):
     ]
     input_fields = [
         InputField("reaction", "数据库反应式", "string"),
-        InputField("feed_moles", "反应前物种量", "object", unit="mol", description="物种键须含相态，如C(s)、O2(g)"),
+        InputField("feed_moles", "反应前物种量", "object", unit="mol", description="物种键到非负摩尔量的非空映射；物种键须含相态，如C(s)、O2(g)", json_schema=NONNEGATIVE_SPECIES_AMOUNT_SCHEMA),
         InputField("initial_temperature_k", "初始温度", "number", unit="K", min_value=1e-12),
         InputField("conversion_fraction", "限制反应物转化率", "number", unit="1", min_value=0, max_value=1),
         InputField("temperature_lower_k", "求根下界", "number", unit="K", min_value=1e-12),
@@ -366,7 +382,7 @@ class B013_IdealGasEquilibrium(ThermoTool):
     _candidate_item = {"type": "string", "description": "带(g)相态的NASA7物种键"}
     input_fields = [
         InputField("candidate_species", "候选气体物种", "array", items=_candidate_item, min_items=2, max_items=12),
-        InputField("initial_moles", "初始物质的量", "object", unit="mol"),
+        InputField("initial_moles", "初始物质的量", "object", unit="mol", description="候选气体物种到非负初始摩尔量的非空映射", json_schema=NONNEGATIVE_SPECIES_AMOUNT_SCHEMA),
         InputField("temperature_k", "温度", "number", unit="K", min_value=200, max_value=3500),
         InputField("pressure_pa", "总压力", "number", unit="Pa", min_value=1, max_value=1e8),
         InputField("max_iterations", "最大迭代次数", "number", required=False, default=1000, unit="1", min_value=20, max_value=10000),
@@ -604,7 +620,7 @@ class B016_RedlichKisterExcessGibbs(ThermoTool):
         rel("upstream_of", "B017", "可将Raoult标准态活度系数交给标准态切换工具"),
     ]
     input_fields = [
-        InputField("compositions", "二元摩尔组成", "object", unit="1", description="恰好两个组元的非负数值"),
+        InputField("compositions", "二元摩尔组成", "object", unit="1", description="恰好两个非负组元，且总量大于0", json_schema=BINARY_COMPOSITION_SCHEMA),
         InputField("temperature_k", "温度", "number", unit="K", min_value=1e-12),
         InputField(
             "interaction_parameters_j_mol", "Redlich-Kister系数", "array", unit="J/mol",

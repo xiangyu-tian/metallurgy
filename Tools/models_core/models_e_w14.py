@@ -19,6 +19,43 @@ from .repositories.reference_repository import RepositoryError, nasa7
 
 SCENARIO = "高炉低碳"
 
+BOSH_GAS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "CO": {"type": "number", "minimum": 0},
+        "H2": {"type": "number", "minimum": 0, "default": 0},
+        "N2": {"type": "number", "minimum": 0, "default": 0},
+    },
+    "required": ["CO"],
+    "additionalProperties": False,
+}
+
+ADDITIONAL_TOP_GAS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "CO2": {"type": "number", "minimum": 0, "default": 0},
+        "H2O": {"type": "number", "minimum": 0, "default": 0},
+        "N2": {"type": "number", "minimum": 0, "default": 0},
+    },
+    "additionalProperties": False,
+}
+
+RIST_TOP_GAS_SCHEMA = {
+    "type": "object",
+    "properties": {
+        component: {"type": "number", "minimum": 0, "default": 0}
+        for component in ("CO", "CO2", "H2", "H2O")
+    },
+    "additionalProperties": False,
+}
+
+RIST_POINT_SCHEMA = {
+    "type": "object",
+    "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
+    "required": ["x", "y"],
+    "additionalProperties": False,
+}
+
 
 def rel(kind: str, target: str, description: str) -> dict[str, str]:
     return {"type": kind, "target": target, "description": description}
@@ -154,11 +191,11 @@ class E010_BFTopGasComposition(W14BFFormulaTool):
         rel("overlaps", "E011", "均报告CO/H2利用率，但本工具还计算完整炉顶气量和组成"),
     ]
     input_fields = [
-        InputField("bosh_gas_kmol", "风口区气体量", "object", description="{CO,H2,N2}，单位kmol/$basis"),
+        InputField("bosh_gas_kmol", "风口区气体量", "object", description="{CO,H2,N2}，单位kmol/$basis；CO必填，H2/N2省略按0", json_schema=BOSH_GAS_SCHEMA),
         InputField("reduced_ore_oxygen_kmol", "被还原矿石氧", "number", unit="kmol O atoms/$basis", min_value=0),
         InputField("direct_reduction_fraction", "直接还原分数", "number", unit="1", min_value=0, max_value=1),
         InputField("hydrogen_share_of_indirect_reduction", "间接还原中H2分担率", "number", unit="1", min_value=0, max_value=1),
-        InputField("additional_top_gas_kmol", "外加炉顶气体", "object", required=False, description="{CO2,H2O,N2}，单位kmol/$basis"),
+        InputField("additional_top_gas_kmol", "外加炉顶气体", "object", required=False, description="{CO2,H2O,N2}，单位kmol/$basis；各项省略按0", json_schema=ADDITIONAL_TOP_GAS_SCHEMA),
         InputField("normal_molar_volume_nm3_kmol", "标况摩尔体积", "number", required=False, default=22.414, unit="Nm3/kmol", min_value=1e-12),
         InputField("atom_balance_tolerance_kmol", "原子平衡容差", "number", required=False, default=1e-9, unit="kmol atoms/$basis", min_value=0),
     ]
@@ -337,9 +374,9 @@ class E106_CompleteRistOperatingLine(W14BFFormulaTool):
         InputField("iron_basis_kmol", "Fe统计基准", "number", unit="kmol Fe/$basis", min_value=1e-12),
         InputField("burden_oxygen_atom_kmol", "炉料铁氧化物结合氧", "number", unit="kmol O atoms/$basis", min_value=0),
         InputField("hot_metal_oxygen_atom_kmol", "铁水残余氧", "number", required=False, default=0, unit="kmol O atoms/$basis", min_value=0),
-        InputField("top_gas_kmol", "炉顶还原气组分", "object", description="{CO,CO2,H2,H2O}，单位kmol/$basis"),
-        InputField("energy_balance_point", "能量固定点P", "object", description="{x,y}，Rist无量纲坐标"),
-        InputField("ideal_wustite_point", "理想wüstite点W", "object", description="{x,y}，Rist无量纲坐标"),
+        InputField("top_gas_kmol", "炉顶还原气组分", "object", description="{CO,CO2,H2,H2O}，单位kmol/$basis；省略组分按0，总量必须大于0", json_schema=RIST_TOP_GAS_SCHEMA),
+        InputField("energy_balance_point", "能量固定点P", "object", description="{x,y}，Rist无量纲坐标", json_schema=RIST_POINT_SCHEMA),
+        InputField("ideal_wustite_point", "理想wüstite点W", "object", description="{x,y}，Rist无量纲坐标", json_schema=RIST_POINT_SCHEMA),
         InputField("slope_closure_tolerance", "斜率闭合容差", "number", required=False, default=1e-8, unit="kmol reducing gas/kmol Fe", min_value=0),
     ]
     output_fields = [
@@ -727,7 +764,23 @@ class E013_RacewayAdiabaticFlameTemperature(BaseModelTool):
         InputField("supplemental_oxygen_temperature_k", "富氧温度", "number", unit="K", min_value=200, max_value=3500),
         InputField("steam_kmol", "鼓风蒸汽", "number", unit="kmol H2O/$basis", min_value=0),
         InputField("steam_temperature_k", "蒸汽温度", "number", unit="K", min_value=200, max_value=3500),
-        InputField("reacting_fuel_element_atoms_kmol", "参与反应燃料元素原子量", "object", description="{C,H,O,N}，单位kmol atoms/$basis"),
+        InputField(
+            "reacting_fuel_element_atoms_kmol",
+            "参与反应燃料元素原子量",
+            "object",
+            description="参与反应燃料的C/H/O/N原子量；C必填，未提供的H/O/N按0处理，单位kmol atoms/$basis",
+            json_schema={
+                "type": "object",
+                "properties": {
+                    "C": {"type": "number", "minimum": 0, "description": "碳原子量，kmol atoms/$basis"},
+                    "H": {"type": "number", "minimum": 0, "default": 0, "description": "氢原子量，kmol atoms/$basis"},
+                    "O": {"type": "number", "minimum": 0, "default": 0, "description": "燃料自带氧原子量，kmol atoms/$basis"},
+                    "N": {"type": "number", "minimum": 0, "default": 0, "description": "燃料自带氮原子量，kmol atoms/$basis"},
+                },
+                "required": ["C"],
+                "additionalProperties": False,
+            },
+        ),
         InputField("effective_fuel_lhv_mj", "反应燃料有效完全氧化LHV", "number", unit="MJ/$basis", min_value=0),
         InputField("fuel_sensible_enthalpy_mj", "燃料相对298K显热", "number", required=False, default=0, unit="MJ/$basis"),
         InputField("fuel_process_heat_demand_mj", "热解灰分等工艺吸热", "number", required=False, default=0, unit="MJ/$basis", min_value=0),

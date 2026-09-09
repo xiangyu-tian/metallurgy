@@ -15,6 +15,49 @@ from .repositories.reference_repository import RepositoryError, atomic_weights, 
 
 SUPPORTED_ELEMENTS = ("C", "Si", "Mn", "P", "Fe")
 
+BOF_MASS_FRACTION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        element: {"type": "number", "minimum": 0, "maximum": 1}
+        for element in SUPPORTED_ELEMENTS
+    },
+    "minProperties": 1,
+    "additionalProperties": False,
+}
+
+BOF_METAL_INPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "mass_kg": {"type": "number", "exclusiveMinimum": 0},
+        "composition": BOF_MASS_FRACTION_SCHEMA,
+    },
+    "required": ["mass_kg", "composition"],
+    "additionalProperties": False,
+}
+
+OXIDE_MASS_MAP_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "CaO": {"type": "number", "minimum": 0},
+        "SiO2": {"type": "number", "minimum": 0},
+        "MgO": {"type": "number", "minimum": 0},
+    },
+    "required": ["CaO", "SiO2", "MgO"],
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+OXIDE_ASSAY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "CaO": {"type": "number", "minimum": 0, "maximum": 1},
+        "SiO2": {"type": "number", "minimum": 0, "maximum": 1},
+        "MgO": {"type": "number", "minimum": 0, "maximum": 1},
+    },
+    "required": ["CaO", "SiO2", "MgO"],
+    "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+}
+
 
 def rel(kind, target, description):
     return {"type": kind, "target": target, "description": description}
@@ -63,9 +106,9 @@ class D001_BOFOxygenDemand(ProcessTool):
     dependencies = ["A002","A006","A007"]
     relations = [rel("depends_on","A002","化学式元素识别采用同一元素符号约定"),rel("depends_on","A006","氧化去向必须满足已配平反应"),rel("depends_on","A007","采用相同电子与O2当量"),rel("upstream_of","D002","氧化反应量可用于生成反应热输入")]
     input_fields = [
-        InputField("metal_inputs", "金属装料", "array", items={"type":"object"}, description="[{name,mass_kg,composition:{C,Si,Mn,P,Fe}}]"),
+        InputField("metal_inputs", "金属装料", "array", items=BOF_METAL_INPUT_SCHEMA, min_items=1, description="[{name,mass_kg,composition:{C,Si,Mn,P,Fe}}]；name可省略，不参与计算"),
         InputField("target_steel_mass_kg", "目标钢水质量", "number", unit="kg", min_value=1e-12),
-        InputField("target_composition", "目标钢水组成", "object", description="元素质量分数"),
+        InputField("target_composition", "目标钢水组成", "object", description="C/Si/Mn/P/Fe元素质量分数；总和不得超过1", json_schema=BOF_MASS_FRACTION_SCHEMA),
         InputField("carbon_to_co2_fraction", "碳生成CO2的比例", "number", required=False, default=0.0, unit="dimensionless", min_value=0,max_value=1),
         InputField("iron_oxide", "铁氧化物去向", "select", required=False, default="FeO", enum=["FeO","Fe2O3"]),
         InputField("oxygen_utilization", "氧利用率", "number", required=False, default=1.0, unit="dimensionless", min_value=1e-12,max_value=1),
@@ -239,6 +282,49 @@ class D002_BOFStaticHeatBalance(ProcessTool):
         return ModelResult(True,result={"solve_for":mode,"final_temperature_k":temperature,"maximum_meltable_scrap_kg":scrap_mass,"actual_scrap_mass_kg":scrap_mass,"scrap_melt_fraction":fraction,"fully_molten":fully,"initial_energy_kj":initial,"reaction_heat_kj":reaction,"other_heat_input_kj":other,"heat_loss_kj":loss,"final_energy_kj":final,"energy_closure_error_kj":closure,"target_temperature_k":temperature,"assumptions":assumptions},provenance=provenance)
 
 
+_BOF_STREAM_COMPOSITION_SCHEMA = {
+    "type": "object",
+    "description": "元素符号到质量分数的非空映射；各值在0至1之间且总和不超过1",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "pattern": "^[A-Z][a-z]?$"},
+    "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+}
+
+_BOF_INPUT_STREAM_SCHEMA = {
+    "type": "object",
+    "description": "一条BOF输入物流；质量与其他物流使用同一统计基准",
+    "properties": {
+        "name": {"type": "string", "minLength": 1, "description": "物流唯一名称"},
+        "category": {
+            "type": "string",
+            "enum": ["hot_metal", "scrap", "metal_addition", "flux", "oxygen", "other"],
+            "description": "输入物流类别",
+        },
+        "mass_kg": {"type": "number", "minimum": 0, "description": "物流质量；单位: kg/$basis"},
+        "composition": _BOF_STREAM_COMPOSITION_SCHEMA,
+    },
+    "required": ["name", "category", "mass_kg", "composition"],
+    "additionalProperties": False,
+}
+
+_BOF_OUTPUT_STREAM_SCHEMA = {
+    "type": "object",
+    "description": "一条BOF输出物流；审计模式必须给mass_kg，单未知求解时仅目标物流可省略mass_kg",
+    "properties": {
+        "name": {"type": "string", "minLength": 1, "description": "物流唯一名称"},
+        "category": {
+            "type": "string",
+            "enum": ["steel", "slag", "offgas", "dust", "splash", "other"],
+            "description": "输出物流类别",
+        },
+        "mass_kg": {"type": "number", "minimum": 0, "description": "物流质量；单位: kg/$basis"},
+        "composition": _BOF_STREAM_COMPOSITION_SCHEMA,
+    },
+    "required": ["name", "category", "composition"],
+    "additionalProperties": False,
+}
+
+
 class D021_BOFChargeBalance(FormulaProcessTool):
     """Catalog D001; D021 avoids colliding with legacy runtime D001."""
 
@@ -265,8 +351,8 @@ class D021_BOFChargeBalance(FormulaProcessTool):
     ]
     input_fields = [
         InputField("basis", "统计基准", "select", enum=["per_heat", "per_t_steel", "per_hour"], description="所有质量都按同一基准给出"),
-        InputField("input_streams", "输入物流", "array", items={"type": "object"}, description="[{name,category,mass_kg,composition:{element:fraction}}]"),
-        InputField("output_streams", "输出物流", "array", items={"type": "object"}, description="同输入结构；单未知求解时目标物流可省略mass_kg"),
+        InputField("input_streams", "输入物流", "array", items=_BOF_INPUT_STREAM_SCHEMA, min_items=1, description="BOF输入物流数组；每项包含名称、类别、质量和元素质量分数组成"),
+        InputField("output_streams", "输出物流", "array", items=_BOF_OUTPUT_STREAM_SCHEMA, min_items=1, description="BOF输出物流数组；审计模式每项均给质量，单未知求解时仅目标物流省略质量"),
         InputField("solve_stream_name", "待求输出物流名", "string", required=False, description="省略表示仅审计；给出时必须只有该输出物流缺mass_kg"),
         InputField("solve_element", "求解约束元素", "string", required=False, description="单未知求解时必填，且该元素在待求物流中质量分数大于0"),
         InputField("absolute_tolerance_kg", "绝对闭合容差", "number", required=False, default=1e-6, unit="kg/$basis", min_value=0),
@@ -461,9 +547,9 @@ class D004_BOFFluxAddition(FormulaProcessTool):
         rel("upstream_of", "D002", "熔剂质量和预计渣量可进入热平衡"),
     ]
     input_fields = [
-        InputField("existing_oxide_masses_kg", "现有渣源氧化物质量", "object", unit="kg/$basis", description="必须包含CaO、SiO2、MgO，可含其他氧化物"),
-        InputField("lime_assay", "石灰化验", "object", unit="1", description="氧化物质量分数，和必须为1"),
-        InputField("dolomite_assay", "白云石化验", "object", unit="1", description="氧化物质量分数，和必须为1"),
+        InputField("existing_oxide_masses_kg", "现有渣源氧化物质量", "object", unit="kg/$basis", description="必须包含CaO、SiO2、MgO，可含其他非负氧化物质量", json_schema=OXIDE_MASS_MAP_SCHEMA),
+        InputField("lime_assay", "石灰化验", "object", unit="1", description="必须包含CaO、SiO2、MgO；可含其他氧化物，质量分数和必须为1", json_schema=OXIDE_ASSAY_SCHEMA),
+        InputField("dolomite_assay", "白云石化验", "object", unit="1", description="必须包含CaO、SiO2、MgO；可含其他氧化物，质量分数和必须为1", json_schema=OXIDE_ASSAY_SCHEMA),
         InputField("target_basicity", "目标二元碱度", "number", unit="1", min_value=1e-12, description="最终CaO/SiO2"),
         InputField("target_mgo_fraction", "目标MgO质量分数", "number", unit="1", min_value=0, max_value=0.5),
         InputField("lime_utilization", "石灰入渣利用率", "number", required=False, default=1.0, unit="1", min_value=1e-12, max_value=1),

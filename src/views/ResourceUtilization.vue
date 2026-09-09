@@ -388,18 +388,21 @@
       </div>
     </section>
   </div>
+  <LiteratureSection domainCode="resource_utilization" domainName="冶金资源利用" />
   <Footer></Footer>
 </template>
 
 <script>
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
+import LiteratureSection from "@/components/LiteratureSection.vue";
 
 export default {
   name: "ResourceUtilization",
   components: {
     Header,
     Footer,
+    LiteratureSection,
   },
   data() {
     return {};

@@ -236,18 +236,21 @@
       </section>
     </div>
   </div>
+  <LiteratureSection domainCode="energy_restructuring" domainName="冶金能源重构" />
   <Footer></Footer>
 </template>
 
 <script>
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
+import LiteratureSection from "@/components/LiteratureSection.vue";
 
 export default {
   name: "EnergyRestructuring",
   components: {
     Header,
     Footer,
+    LiteratureSection,
   },
   data() {
     return {

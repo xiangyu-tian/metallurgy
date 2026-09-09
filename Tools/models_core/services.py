@@ -10,6 +10,7 @@ from copy import deepcopy
 from dataclasses import asdict
 from typing import Dict, List, Optional
 
+from .artifacts import ArtifactError, ToolArtifactService
 from .base import InvocationContext
 from .registry import ModelRegistry
 
@@ -34,6 +35,8 @@ class InMemoryTraceStore:
     def __init__(self):
         self._executions: Dict[str, dict] = {}
         self._experiments: Dict[str, dict] = {}
+        self._scene_runs: Dict[str, dict] = {}
+        self._work_orders: Dict[str, dict] = {}
         self._lock = threading.RLock()
 
     def save_execution(self, record: dict) -> None:
@@ -54,13 +57,37 @@ class InMemoryTraceStore:
             record = self._experiments.get(experiment_id)
             return deepcopy(record) if record else None
 
+    def save_scene_run(self, record: dict) -> None:
+        with self._lock:
+            self._scene_runs[record["run_id"]] = deepcopy(record)
+
+    def get_scene_run(self, run_id: str) -> Optional[dict]:
+        with self._lock:
+            record = self._scene_runs.get(run_id)
+            return deepcopy(record) if record else None
+
+    def save_work_order(self, record: dict) -> None:
+        with self._lock:
+            self._work_orders[record["work_order_id"]] = deepcopy(record)
+
+    def get_work_order(self, work_order_id: str) -> Optional[dict]:
+        with self._lock:
+            record = self._work_orders.get(work_order_id)
+            return deepcopy(record) if record else None
+
 
 class ModelExecutionService:
     """模型协议的 validate / execute 垂直切片。"""
 
-    def __init__(self, registry: ModelRegistry, store: InMemoryTraceStore):
+    def __init__(
+        self,
+        registry: ModelRegistry,
+        store: InMemoryTraceStore,
+        artifact_service: Optional[ToolArtifactService] = None,
+    ):
         self.registry = registry
         self.store = store
+        self.artifact_service = artifact_service or ToolArtifactService()
 
     def validate(self, model_code: str, arguments: dict) -> dict:
         return self.registry.validate(model_code, arguments)
@@ -79,6 +106,33 @@ class ModelExecutionService:
         trace_id = trace_id or _identifier("TRACE")
         started_at = time.time()
         model = self.registry.get(model_code)
+
+        try:
+            artifact_request = self.artifact_service.validate_request(
+                model_code, options.get("artifact")
+            )
+        except ArtifactError as exc:
+            record = {
+                "execution_id": execution_id,
+                "trace_id": trace_id,
+                "model_code": model_code,
+                "tool_uid": model.tool_uid if model else None,
+                "catalog_id": model.catalog_id if model else None,
+                "model_version": model.version if model else None,
+                "input": deepcopy(arguments),
+                "actual_data_records": [],
+                "output": None,
+                "boundary_check": None,
+                "status": "rejected",
+                "error": str(exc),
+                "error_code": exc.error_code,
+                "runtime_ms": 0.0,
+                "started_at": started_at,
+                "completed_at": time.time(),
+                "user_or_agent": user_or_agent,
+            }
+            self.store.save_execution(record)
+            return record
 
         context = InvocationContext(
             user_or_agent=user_or_agent,
@@ -107,8 +161,62 @@ class ModelExecutionService:
             "completed_at": time.time(),
             "user_or_agent": user_or_agent,
         }
+        if artifact_request is not None and record["status"] == "success":
+            try:
+                record["artifact"] = self.artifact_service.materialize(
+                    execution_id=execution_id,
+                    model=model,
+                    arguments=arguments,
+                    output=record["output"],
+                    provenance=record["actual_data_records"],
+                    request=artifact_request,
+                )
+            except ArtifactError as exc:
+                record["status"] = "rejected"
+                record["error"] = str(exc)
+                record["error_code"] = exc.error_code
+                record["artifact"] = None
+                record["calculation_status"] = "success"
+            except Exception as exc:
+                record["status"] = "error"
+                record["error"] = f"结果资产生成失败: {exc}"
+                record["error_code"] = "MODEL_ARTIFACT_UNAVAILABLE"
+                record["artifact"] = None
+                record["calculation_status"] = "success"
+        record["completed_at"] = time.time()
         self.store.save_execution(record)
         return record
+
+    def materialize_execution_artifact(
+        self,
+        execution_id: str,
+        request: dict,
+    ) -> dict:
+        record = self.store.get_execution(execution_id)
+        if not record:
+            raise ArtifactError(f"未知执行记录: {execution_id}", "INVALID_INPUT")
+        if record.get("status") != "success" or not isinstance(record.get("output"), dict):
+            raise ArtifactError("只有成功且输出为对象的执行记录才能生成结果资产")
+        model = self.registry.get(record["model_code"])
+        normalized = self.artifact_service.validate_request(record["model_code"], request)
+        if normalized is None:
+            raise ArtifactError("必须提供结果资产请求", "INVALID_INPUT")
+        try:
+            artifact = self.artifact_service.materialize(
+                execution_id=record["execution_id"],
+                model=model,
+                arguments=record["input"],
+                output=record["output"],
+                provenance=record.get("actual_data_records", []),
+                request=normalized,
+            )
+        except ArtifactError:
+            raise
+        except Exception as exc:
+            raise ArtifactError(f"结果资产生成失败: {exc}") from exc
+        record["artifact"] = artifact
+        self.store.save_execution(record)
+        return artifact
 
 
 class ExperimentService:
@@ -249,6 +357,7 @@ class ExperimentService:
         llm_name: str = "external-orchestrator",
         prompt_version: str = "v1",
         result_validation_enabled: bool = True,
+        artifact_request: Optional[dict] = None,
     ) -> dict:
         if mode not in self.MODES:
             raise ValueError(f"mode 必须是 {self.MODES} 之一")
@@ -264,6 +373,8 @@ class ExperimentService:
         validation_result = None
         execution_result = None
         final_answer = baseline_answer
+
+        execution_arguments = deepcopy(arguments or {})
 
         if mode == self.MODE_DIRECT:
             selection_reason = "实验策略禁止调用工具"
@@ -288,13 +399,22 @@ class ExperimentService:
                 }],
             }
         elif selected_model:
-            validation_result = self.executor.validate(selected_model, arguments or {})
+            execution_options = None
+            if artifact_request:
+                if selected_model == "G005":
+                    execution_arguments["artifact_mode"] = artifact_request.get(
+                        "mode", "directory_and_zip"
+                    )
+                else:
+                    execution_options = {"artifact": artifact_request}
+            validation_result = self.executor.validate(selected_model, execution_arguments)
             if validation_result["valid"]:
                 execution_result = self.executor.execute(
                     selected_model,
-                    arguments or {},
+                    execution_arguments,
                     trace_id=trace_id,
                     user_or_agent=llm_name,
+                    options=execution_options,
                 )
                 if execution_result["status"] == "success":
                     final_answer = final_answer or json.dumps(
@@ -313,7 +433,7 @@ class ExperimentService:
             "candidate_models": candidates,
             "selected_model": selected_model,
             "selection_reason": selection_reason,
-            "generated_arguments": deepcopy(arguments or {}),
+            "generated_arguments": execution_arguments,
             "validation_result": validation_result,
             "execution_result": execution_result,
             "retry_count": 0,

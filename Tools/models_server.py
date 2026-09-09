@@ -11,9 +11,11 @@ API 文档:
   GET  /api/v1/health               — 健康检查
 """
 from __future__ import annotations
+import json
 import os
 import sys
 import uuid
+from pathlib import Path
 from typing import Optional
 
 # 确保 models_core 可导入
@@ -21,23 +23,70 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from models_core import ModelRegistry
+from models_core.artifacts import ArtifactError
 from models_core.base import InvocationContext
 from models_core.services import (
     ExperimentService,
     InMemoryTraceStore,
     ModelExecutionService,
 )
+from models_core.scenes import SceneError, SceneOrchestrationService
 
 # ── 初始化注册表 ──
 registry = ModelRegistry()
 count = registry.discover()
 print(f"[models-server] registered {count} models: {[m.model_id for m in registry._models.values()]}")
+
+
+def _load_experiment_eligibility_snapshot() -> dict:
+    """Load the frozen acceptance set without re-running any tool qualification cases."""
+    snapshot_path = Path(__file__).with_name("tool_eligibility_snapshot_20260903.json")
+    try:
+        payload = json.loads(snapshot_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"valid": False, "snapshot_id": None, "tools": {}, "errors": [str(exc)]}
+    records = payload.get("tools") or []
+    errors = []
+    approved = {}
+    if payload.get("expected_registered_count") != len(registry._models):
+        errors.append(
+            f"registered_count changed: expected {payload.get('expected_registered_count')}, "
+            f"actual {len(registry._models)}"
+        )
+    for record in records:
+        code = record.get("model_code")
+        model = registry.get(code) if code else None
+        if model is None:
+            errors.append(f"snapshot tool missing: {code}")
+            continue
+        if model.tool_name != record.get("tool_name") or model.version != record.get("model_version"):
+            errors.append(f"snapshot identity/version mismatch: {code}")
+            continue
+        approved[code] = record
+    if len(approved) != payload.get("expected_registered_count"):
+        errors.append(
+            f"approved tool count mismatch: expected {payload.get('expected_registered_count')}, "
+            f"actual {len(approved)}"
+        )
+    return {
+        "valid": not errors,
+        "snapshot_id": payload.get("snapshot_id"),
+        "frozen_at": payload.get("frozen_at"),
+        "source_reports": payload.get("source_reports") or [],
+        "tools": approved,
+        "errors": errors,
+    }
+
+
+experiment_eligibility_snapshot = _load_experiment_eligibility_snapshot()
 trace_store = InMemoryTraceStore()
 execution_service = ModelExecutionService(registry, trace_store)
 experiment_service = ExperimentService(registry, execution_service, trace_store)
+scene_service = SceneOrchestrationService(registry, execution_service, trace_store)
 
 # ── FastAPI 应用 ──
 app = FastAPI(
@@ -107,7 +156,16 @@ class ToolCallRequest(BaseModel):
     options: dict = Field(default_factory=lambda: {
         "validate_boundary": True,
         "return_provenance": True,
-    })
+    }, description=(
+        "执行选项；可用artifact={mode:directory|directory_and_zip,name?:安全文件名}"
+        "把成功执行导出到项目固定目录。G005继续使用arguments.artifact_mode。"
+    ))
+
+
+class ArtifactRequest(BaseModel):
+    """把一个已成功执行记录导出为可读取结果包。"""
+    mode: str = Field(default="directory", description="directory / directory_and_zip")
+    name: Optional[str] = Field(default=None, description="可选安全文件名，不是调用者路径")
 
 
 class ExperimentRequest(BaseModel):
@@ -119,6 +177,32 @@ class ExperimentRequest(BaseModel):
     llm_name: str = "external-orchestrator"
     prompt_version: str = "v1"
     result_validation_enabled: bool = True
+    artifact: Optional[ArtifactRequest] = Field(
+        default=None,
+        description="可选文件产物请求；G005映射为原生案例包，其他工具生成统一结果包",
+    )
+
+
+class SceneRunRequest(BaseModel):
+    selected_steps: Optional[list[str]] = None
+    arguments_by_step: dict = Field(default_factory=dict)
+    options: dict = Field(default_factory=lambda: {
+        "stop_on_error": True,
+        "artifact_steps": [],
+        "artifact_mode": "directory_and_zip",
+    })
+
+
+class WorkOrderCompileRequest(BaseModel):
+    run_id: str
+    title: Optional[str] = None
+    operator_notes: str = ""
+
+
+class WorkOrderReviewRequest(BaseModel):
+    action: str
+    reviewer: str
+    comment: str = ""
 
 
 # ── API 路由 ──
@@ -162,12 +246,58 @@ def list_llm_tools(
         fully_eligible_only=fully_eligible,
         scenario=scenario,
     )
+    for definition in tools:
+        model = registry.get(definition["model_code"])
+        definition["artifact_capability"] = execution_service.artifact_service.capability(model)
     return {
         **registry.get_counts(),
         "fully_eligible_filter": fully_eligible,
         "total": len(tools),
         "tools": tools,
         "call_endpoint_template": "/api/v1/tools/{function.name}/call",
+    }
+
+
+@app.get("/api/v1/experiments/tool-registry")
+def list_experiment_llm_tools(scenario: Optional[str] = None):
+    """Return the frozen 120-tool experiment catalog without re-running acceptance tests."""
+    snapshot = experiment_eligibility_snapshot
+    if not snapshot["valid"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "TOOL_ELIGIBILITY_SNAPSHOT_INVALID",
+                "errors": snapshot["errors"],
+            },
+        )
+    tools = []
+    for model_code in sorted(snapshot["tools"]):
+        model = registry.get(model_code)
+        if scenario and model.scenario != scenario:
+            continue
+        definition = model.get_tool_definition({"fully_eligible": True})
+        definition["eligibility_source"] = "frozen_acceptance_snapshot"
+        definition["eligibility_snapshot_id"] = snapshot["snapshot_id"]
+        definition["artifact_capability"] = execution_service.artifact_service.capability(model)
+        tools.append(definition)
+    return {
+        "registered_count": len(registry._models),
+        "qualified_executable_count": len(snapshot["tools"]),
+        "fully_eligible_count": len(snapshot["tools"]),
+        "qualification_execution_count": 0,
+        "eligibility_source": "frozen_acceptance_snapshot",
+        "eligibility_snapshot_id": snapshot["snapshot_id"],
+        "eligibility_frozen_at": snapshot["frozen_at"],
+        "source_reports": snapshot["source_reports"],
+        "input_contract_complete_count": sum(
+            tool["input_contract"]["status"] == "complete" for tool in tools
+        ),
+        "input_contract_incomplete_count": sum(
+            tool["input_contract"]["status"] != "complete" for tool in tools
+        ),
+        "total": len(tools),
+        "tools": tools,
+        "call_endpoint_template": "/api/v1/experiments/tools/{function.name}/call",
     }
 
 
@@ -178,10 +308,12 @@ def get_model(model_id: str):
     model = registry.get(model_id)
     if not model:
         raise HTTPException(status_code=404, detail=f"未知模型: {model_id}")
-    return next(
+    entry = next(
         entry for entry in registry.list_models()
         if entry["model_code"] == model_id
     )
+    entry["artifact_capability"] = execution_service.artifact_service.capability(model)
+    return entry
 
 
 @app.get("/api/tools/{tool_name}")
@@ -201,7 +333,9 @@ def get_llm_tool(tool_name: str):
                 },
             )
         raise HTTPException(status_code=404, detail=f"未知工具函数: {tool_name}")
-    return model.get_tool_definition(registry.eligibility_report(model.model_id))
+    definition = model.get_tool_definition(registry.eligibility_report(model.model_id))
+    definition["artifact_capability"] = execution_service.artifact_service.capability(model)
+    return definition
 
 
 @app.post("/api/v1/models/{model_id}/invoke", response_model=InvokeResponse)
@@ -290,6 +424,38 @@ def call_llm_tool(tool_name: str, req: ToolCallRequest):
     )
 
 
+@app.post("/api/v1/experiments/tools/{tool_name}/call")
+def call_experiment_llm_tool(tool_name: str, req: ToolCallRequest):
+    """Execute a frozen-snapshot tool without re-running its accepted qualification cases."""
+    snapshot = experiment_eligibility_snapshot
+    if not snapshot["valid"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error_code": "TOOL_ELIGIBILITY_SNAPSHOT_INVALID",
+                "errors": snapshot["errors"],
+            },
+        )
+    model = registry.get_by_tool_name(tool_name, fully_eligible_only=False)
+    if not model:
+        raise HTTPException(status_code=404, detail=f"未知工具函数: {tool_name}")
+    if model.model_id not in snapshot["tools"]:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error_code": "TOOL_NOT_IN_ELIGIBILITY_SNAPSHOT",
+                "model_code": model.model_id,
+                "eligibility_snapshot_id": snapshot["snapshot_id"],
+            },
+        )
+    return execution_service.execute(
+        model.model_id,
+        req.arguments,
+        options=req.options,
+        user_or_agent="llm-orchestration-experiment",
+    )
+
+
 @app.get("/api/executions/{execution_id}")
 @app.get("/api/v1/executions/{execution_id}")
 def get_execution(execution_id: str):
@@ -297,6 +463,69 @@ def get_execution(execution_id: str):
     if not record:
         raise HTTPException(status_code=404, detail=f"未知执行记录: {execution_id}")
     return record
+
+
+@app.get("/api/v1/artifacts/capabilities")
+def list_artifact_capabilities():
+    """列出原生案例包和统一执行结果包能力，不增加工具计数。"""
+    capabilities = []
+    for model in sorted(registry._models.values(), key=lambda item: item.model_id):
+        capabilities.append({
+            "model_code": model.model_id,
+            "name": model.name,
+            **execution_service.artifact_service.capability(model),
+        })
+    return {
+        "total": len(capabilities),
+        "native_case_bundle_count": sum(item["delivery"] == "native_case_bundle" for item in capabilities),
+        "recommended_result_bundle_count": sum(
+            item["delivery"] == "execution_result_bundle" and item["recommended"]
+            for item in capabilities
+        ),
+        "optional_result_bundle_count": sum(
+            item["delivery"] == "execution_result_bundle" and not item["recommended"]
+            for item in capabilities
+        ),
+        "capabilities": capabilities,
+    }
+
+
+@app.post("/api/executions/{execution_id}/artifact")
+@app.post("/api/v1/executions/{execution_id}/artifact")
+def materialize_execution_artifact(execution_id: str, request: ArtifactRequest):
+    """按执行编号在固定目录生成JSON/CSV/README/manifest及可选ZIP。"""
+    try:
+        return execution_service.materialize_execution_artifact(
+            execution_id,
+            request.model_dump(exclude_none=True),
+        )
+    except ArtifactError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error_code": exc.error_code, "message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/executions/{execution_id}/artifact/download")
+@app.get("/api/v1/executions/{execution_id}/artifact/download")
+def download_execution_artifact(execution_id: str):
+    """下载已校验的ZIP产物；文件系统路径永不由调用方提供。"""
+    record = trace_store.get_execution(execution_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"未知执行记录: {execution_id}")
+    try:
+        descriptor = execution_service.artifact_service.resolve_zip_download(record)
+    except ArtifactError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error_code": exc.error_code, "message": str(exc)},
+        ) from exc
+    return FileResponse(
+        path=descriptor["path"],
+        media_type=descriptor["media_type"],
+        filename=descriptor["filename"],
+        headers={"X-Artifact-SHA256": descriptor["sha256"]},
+    )
 
 
 @app.post("/api/experiments/run")
@@ -313,6 +542,7 @@ def run_experiment(req: ExperimentRequest):
             llm_name=req.llm_name,
             prompt_version=req.prompt_version,
             result_validation_enabled=req.result_validation_enabled,
+            artifact_request=req.artifact.model_dump(exclude_none=True) if req.artifact else None,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -335,6 +565,91 @@ def list_scenarios():
         "total": len(scenarios),
         "scenarios": scenarios,
     }
+
+
+def _scene_http_error(exc: SceneError):
+    status = 404 if exc.error_code in {
+        "SCENE_NOT_FOUND", "RECIPE_NOT_FOUND", "SCENE_RUN_NOT_FOUND", "WORK_ORDER_NOT_FOUND"
+    } else 409 if exc.error_code in {
+        "SCENE_DEPENDENCY_MISSING", "SCENE_BINDING_ERROR", "WORK_ORDER_NOT_RELEASE_ELIGIBLE",
+        "WORK_ORDER_ALREADY_REVIEWED",
+    } else 400
+    raise HTTPException(
+        status_code=status,
+        detail={"error_code": exc.error_code, "message": str(exc)},
+    ) from exc
+
+
+@app.get("/api/v1/scenes")
+def list_business_scenes():
+    """五大业务场景；只复用注册工具，不改变工具计数。"""
+    return scene_service.list_scenes()
+
+
+@app.get("/api/v1/scenes/{scene_id}")
+def get_business_scene(scene_id: str):
+    try:
+        return scene_service.get_scene(scene_id)
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.get("/api/v1/scenes/{scene_id}/recipes/{recipe_id}")
+def get_scene_recipe(scene_id: str, recipe_id: str):
+    try:
+        return scene_service.get_recipe(scene_id, recipe_id)
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.post("/api/v1/scenes/{scene_id}/recipes/{recipe_id}/execute")
+def execute_scene_recipe(scene_id: str, recipe_id: str, req: SceneRunRequest):
+    try:
+        return scene_service.execute_recipe(
+            scene_id,
+            recipe_id,
+            req.model_dump(exclude_none=True),
+        )
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.get("/api/v1/scene-runs/{run_id}")
+def get_scene_run(run_id: str):
+    try:
+        return scene_service.get_run(run_id)
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.post("/api/v1/scenes/{scene_id}/work-orders")
+def compile_scene_work_order(scene_id: str, req: WorkOrderCompileRequest):
+    try:
+        return scene_service.compile_work_order(
+            scene_id,
+            req.model_dump(exclude_none=True),
+        )
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.get("/api/v1/work-orders/{work_order_id}")
+def get_work_order(work_order_id: str):
+    try:
+        return scene_service.get_work_order(work_order_id)
+    except SceneError as exc:
+        _scene_http_error(exc)
+
+
+@app.post("/api/v1/work-orders/{work_order_id}/review")
+def review_work_order(work_order_id: str, req: WorkOrderReviewRequest):
+    try:
+        return scene_service.review_work_order(
+            work_order_id,
+            req.model_dump(exclude_none=True),
+        )
+    except SceneError as exc:
+        _scene_http_error(exc)
 
 
 # ═══════════════════════════════════════════════

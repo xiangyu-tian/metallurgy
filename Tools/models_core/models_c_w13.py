@@ -109,6 +109,15 @@ class C008_MeltViscosity(BaseModelTool):
         InputField(
             "composition_wt_pct", "四元渣质量百分数组成", "object", required=False, unit="wt%",
             description="Urbain模式必填且只能包含SiO2、Al2O3、CaO、MgO，合计100 wt%",
+            json_schema={
+                "type": "object",
+                "properties": {
+                    component: {"type": "number", "exclusiveMinimum": 0}
+                    for component in ("SiO2", "Al2O3", "CaO", "MgO")
+                },
+                "required": ["SiO2", "Al2O3", "CaO", "MgO"],
+                "additionalProperties": False,
+            },
         ),
         InputField("density_kg_m3", "液态合金密度", "number", required=False, unit="kg/m3", min_value=1e-12),
         InputField("liquidus_temperature_k", "液相线温度", "number", required=False, unit="K", min_value=1e-12),

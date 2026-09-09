@@ -612,7 +612,7 @@ export default {
     },
     // 新增方法，用于初始化
     initialize() {
-      axios.post('http://localhost:3001/run-script')
+            axios.post(`http://${window.location.hostname}:3001/run-script`)
         .then(response => {
           console.log('脚本执行成功:', response.data);
         })

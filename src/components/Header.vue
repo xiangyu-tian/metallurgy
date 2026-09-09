@@ -104,6 +104,17 @@
               </div>
             </li>
             <li>
+              <router-link to="/knowledge">文献中心</router-link>
+              <div class="bx-nav-fd">
+                <p>
+                  <router-link to="/knowledge">专业文献检索</router-link>
+                </p>
+                <p v-if="isLoggedIn && userRole === 'admin'">
+                  <router-link to="/admin/knowledge">文献管理</router-link>
+                </p>
+              </div>
+            </li>
+            <li>
               <router-link to="/List">科普</router-link>
               <div class="bx-nav-fd">
                 <p>
@@ -237,10 +248,35 @@ updateUserInfo() {
   height: 90px;
   line-height: 90px;
   position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.bx-header001 .pull-left,
+.bx-header001 .pull-right {
+  float: none !important;
 }
 
 .bx-header001 .bx-logo {
   max-height: 100px;
+  flex-shrink: 0;
+  margin-right: auto;
+}
+
+.bx-header001 .bx-nav {
+  flex-shrink: 0;
+  order: 1;
+}
+
+.bx-header001 .bx-lang {
+  flex-shrink: 0;
+  order: 2;
+}
+
+.bx-header001 .bx-navigation {
+  display: none;
+  flex-shrink: 0;
+  order: 3;
 }
 
 .bx-header001 .bx-logo a {
@@ -289,7 +325,7 @@ updateUserInfo() {
   display: flex;
   align-items: center;
   height: 90px;
-  margin-left: 20px;
+  margin-left: 10px;
   position: relative;
 }
 
@@ -337,7 +373,7 @@ updateUserInfo() {
 .user-info-container {
   position: relative;
   display: inline-block;
-  margin-left: 10px;
+  margin-left: 5px;
 }
 
 /* 用户显示区域 - 模仿导航项样式 */
@@ -345,7 +381,7 @@ updateUserInfo() {
   display: inline-flex;
   align-items: center;
   cursor: pointer;
-  padding: 0 15px;
+  padding: 0 8px;
   position: relative;
   height: 90px;
   line-height: 90px;
@@ -356,28 +392,28 @@ updateUserInfo() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   font-weight: 700;
-  font-size: 16px;
-  margin-right: 10px;
+  font-size: 14px;
+  margin-right: 6px;
   color: #fff;
-  border: 2px solid rgba(255, 255, 255, 0.4); /* 添加圆形边框 */
-  border-radius: 50%; /* 确保圆形 */
-  background-color: rgba(0, 70, 219, 0.3); /* 轻微背景色 */
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  background-color: rgba(0, 70, 219, 0.3);
 }
 
 /* 用户名 - 模仿导航链接样式 */
 .user-name {
   color: #fff;
   font-weight: 400;
-  font-size: 18px;
+  font-size: 15px;
 }
 
 /* 用户角色标签 */
 .user-role-tag {
   color: #80d0ff;
-  font-size: 14px;
+  font-size: 12px;
   margin-left: 4px;
   font-weight: 400;
 }
@@ -513,18 +549,18 @@ updateUserInfo() {
   }
 
   .user-info-container {
-    margin-left: 15px;
+    margin-left: 10px;
   }
 
   .user-name {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .user-avatar {
-    width: 30px;
-    height: 30px;
-    font-size: 15px;
-    margin-right: 8px;
+    width: 26px;
+    height: 26px;
+    font-size: 13px;
+    margin-right: 5px;
   }
 }
 
@@ -541,18 +577,18 @@ updateUserInfo() {
   }
 
   .user-name {
-    font-size: 15px;
+    font-size: 13px;
   }
 
   .user-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-    margin-right: 8px;
+    width: 24px;
+    height: 24px;
+    font-size: 12px;
+    margin-right: 4px;
   }
 
   .user-role-tag {
-    font-size: 13px;
+    font-size: 11px;
   }
 }
 

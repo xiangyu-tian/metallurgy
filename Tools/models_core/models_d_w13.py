@@ -86,15 +86,16 @@ class W13BofTool(BaseModelTool):
 
 _STAGE_SCHEMA = {
     "type": "object",
+    "description": "一个离线供氧阶段；各数组元素按工艺先后顺序排列",
     "properties": {
-        "name": {"type": "string"},
-        "oxygen_flow_nm3_min": {"type": "number", "exclusiveMinimum": 0},
-        "duration_min_min": {"type": "number", "minimum": 0},
-        "duration_max_min": {"type": "number", "exclusiveMinimum": 0},
-        "preferred_oxygen_fraction": {"type": "number", "minimum": 0, "maximum": 1},
-        "deviation_weight": {"type": "number", "exclusiveMinimum": 0},
-        "lance_height_m": {"type": "number", "exclusiveMinimum": 0},
-        "oxygen_utilization_fraction": {"type": "number", "minimum": 0, "maximum": 1},
+        "name": {"type": "string", "minLength": 1, "description": "阶段唯一名称，如early、middle、finish"},
+        "oxygen_flow_nm3_min": {"type": "number", "exclusiveMinimum": 0, "description": "该阶段固定氧流量；单位: Nm3/min"},
+        "duration_min_min": {"type": "number", "minimum": 0, "description": "该阶段允许的最短时长；单位: min"},
+        "duration_max_min": {"type": "number", "exclusiveMinimum": 0, "description": "该阶段允许的最长时长；单位: min，必须大于最短时长"},
+        "preferred_oxygen_fraction": {"type": "number", "minimum": 0, "maximum": 1, "description": "期望分配给该阶段的总氧量比例；单位: 1，所有阶段合计为1"},
+        "deviation_weight": {"type": "number", "exclusiveMinimum": 0, "description": "偏离期望氧量的目标函数权重；单位: 1"},
+        "lance_height_m": {"type": "number", "exclusiveMinimum": 0, "description": "该阶段固定枪位；单位: m"},
+        "oxygen_utilization_fraction": {"type": "number", "minimum": 0, "maximum": 1, "description": "该阶段氧利用率；单位: 1"},
     },
     "required": [
         "name", "oxygen_flow_nm3_min", "duration_min_min", "duration_max_min",
@@ -317,25 +318,37 @@ class D018_BofBlowingScheduleOptimization(W13BofTool):
 
 _TARGET_SCHEMA = {
     "type": "object",
+    "description": "一个目标元素的最终成分允许区间",
     "properties": {
-        "element": {"type": "string"},
-        "min_wt_pct": {"type": "number", "minimum": 0, "maximum": 100},
-        "max_wt_pct": {"type": "number", "minimum": 0, "maximum": 100},
+        "element": {"type": "string", "minLength": 1, "description": "目标元素符号，须与成分映射中的键一致，如Mn"},
+        "min_wt_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "目标成分下限；单位: wt%"},
+        "max_wt_pct": {"type": "number", "minimum": 0, "maximum": 100, "description": "目标成分上限；单位: wt%"},
     },
     "required": ["element", "min_wt_pct", "max_wt_pct"],
     "additionalProperties": False,
 }
 _ALLOY_SCHEMA = {
     "type": "object",
+    "description": "一种候选合金及其成本、加入边界、成分和收得率",
     "properties": {
-        "name": {"type": "string"},
-        "cost_per_kg": {"type": "number", "minimum": 0},
-        "min_addition_kg": {"type": "number", "minimum": 0},
-        "max_addition_kg": {"type": "number", "minimum": 0},
-        "composition_wt_pct": {"type": "object"},
-        "element_recovery_fractions": {"type": "object"},
-        "mass_retention_fraction": {"type": "number", "minimum": 0, "maximum": 1},
-        "batch_size_kg": {"type": "number", "exclusiveMinimum": 0},
+        "name": {"type": "string", "minLength": 1, "description": "候选合金唯一名称"},
+        "cost_per_kg": {"type": "number", "minimum": 0, "description": "每千克成本；币种由调用方统一"},
+        "min_addition_kg": {"type": "number", "minimum": 0, "description": "最小允许加入量；单位: kg"},
+        "max_addition_kg": {"type": "number", "minimum": 0, "description": "最大允许加入量；单位: kg"},
+        "composition_wt_pct": {
+            "type": "object", "minProperties": 1,
+            "propertyNames": {"type": "string", "minLength": 1},
+            "additionalProperties": {"type": "number", "minimum": 0, "maximum": 100},
+            "description": "元素到该合金中质量百分数的映射；单位: wt%，如{Mn:80}",
+        },
+        "element_recovery_fractions": {
+            "type": "object", "minProperties": 1,
+            "propertyNames": {"type": "string", "minLength": 1},
+            "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+            "description": "元素到收得率的映射；单位: 1，如{Mn:0.9}",
+        },
+        "mass_retention_fraction": {"type": "number", "minimum": 0, "maximum": 1, "description": "加入质量保留在钢液中的比例；单位: 1"},
+        "batch_size_kg": {"type": "number", "exclusiveMinimum": 0, "description": "可选离散加料批量；单位: kg"},
     },
     "required": [
         "name", "cost_per_kg", "min_addition_kg", "max_addition_kg",
@@ -388,7 +401,15 @@ class D019_AlloyAdditionOptimization(W13BofTool):
     ]
     input_fields = [
         InputField("heat_mass_kg", "初始钢液质量", "number", unit="kg", min_value=1e-12),
-        InputField("current_composition_wt_pct", "当前钢液成分", "object", unit="wt%"),
+        InputField(
+            "current_composition_wt_pct", "当前钢液成分", "object", unit="wt%",
+            description="元素到当前钢液质量百分数的非空映射，如{Mn:0.5}",
+            json_schema={
+                "minProperties": 1,
+                "propertyNames": {"type": "string", "minLength": 1},
+                "additionalProperties": {"type": "number", "minimum": 0, "maximum": 100},
+            },
+        ),
         InputField("targets", "目标元素区间", "array", items=_TARGET_SCHEMA, min_items=1, max_items=12),
         InputField("alloys", "候选合金", "array", items=_ALLOY_SCHEMA, min_items=1, max_items=30),
         InputField("max_total_addition_kg", "最大总加入量", "number", unit="kg", min_value=0),

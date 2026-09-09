@@ -835,21 +835,14 @@
                   <label for="modelScenario"><i class="fas fa-tag"></i> 业务场景</label>
                   <select id="modelScenario" v-model="modelFilter.scenario">
                     <option value="">全部场景</option>
-                    <option value="通用数据与校验">通用数据与校验</option>
-                    <option value="热力学与相平衡">热力学与相平衡</option>
-                    <option value="动力学与传递">动力学与传递</option>
-                    <option value="转炉炼钢">转炉炼钢</option>
-                    <option value="高炉炼铁">高炉炼铁</option>
-                    <option value="连铸">连铸</option>
+                    <option v-for="scenario in modelScenarioOptions" :key="scenario" :value="scenario">{{ scenario }}</option>
                   </select>
                 </div>
                 <div class="form-group">
                   <label for="modelPriority"><i class="fas fa-flag"></i> 优先级</label>
                   <select id="modelPriority" v-model="modelFilter.priority">
                     <option value="">全部</option>
-                    <option value="P0">P0 — 优先实施</option>
-                    <option value="P1">P1 — 重要</option>
-                    <option value="P2">P2 — 一般</option>
+                    <option v-for="priority in modelPriorityOptions" :key="priority" :value="priority">{{ priority }}</option>
                   </select>
                 </div>
               </div>
@@ -857,7 +850,7 @@
 
             <!-- 模型卡片网格 -->
             <div class="model-cards-grid mt20">
-              <div class="model-card" v-for="model in filteredModels" :key="model.id">
+              <div class="model-card" v-for="model in paginatedFilteredModels" :key="model.id">
                 <div class="model-card-header">
                   <span class="model-badge" :class="'priority-' + (model.priority||'P2').toLowerCase()">{{ model.id }}</span>
                   <span class="model-priority">{{ model.priority }}</span>
@@ -877,50 +870,26 @@
                 </div>
               </div>
             </div>
-
-            <!-- 可调用工具一览 -->
-            <div class="section-header mt30">
-              <h3><i class="fas fa-list"></i> 可调用工具一览</h3>
-              <p>已注册的 120 个小模型，按场景分类</p>
+            <div v-if="!filteredModels.length" class="model-empty-state">
+              <i class="fas fa-search"></i> 没有符合当前筛选条件的已注册工具
+            </div>
+            <div class="pagination model-card-pagination" v-if="modelCardPages > 1">
+              <button class="page-btn" :disabled="modelCardPage === 1" @click="modelCardPage--">
+                <i class="fas fa-chevron-left"></i> 上一页
+              </button>
+              <span class="page-info">共 {{ filteredModels.length }} 项 · 第 {{ modelCardPage }} / {{ modelCardPages }} 页</span>
+              <button class="page-btn" :disabled="modelCardPage === modelCardPages" @click="modelCardPage++">
+                下一页 <i class="fas fa-chevron-right"></i>
+              </button>
             </div>
 
-            <div class="model-table mt10">
-              <table>
-                <thead>
-                <tr>
-                  <th>模型ID</th>
-                  <th>名称</th>
-                  <th>场景</th>
-                  <th>类型</th>
-                  <th>优先级</th>
-                  <th>状态</th>
-                  <th>操作</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr v-for="m in registeredModels" :key="m.model_id">
-                  <td><code>{{ m.model_id }}</code></td>
-                  <td>{{ m.name }}</td>
-                  <td>{{ m.scenario }}</td>
-                  <td>{{ m.model_type }}</td>
-                  <td><span class="badge-prio" :class="'p' + (m.priority||'p2').toLowerCase()">{{ m.priority }}</span></td>
-                  <td><span class="status-tag" :class="m.status || 'dev'">{{ statusLabel(m.status) }}</span></td>
-                  <td>
-                    <button class="btn-calc btn-sm" @click="invokeModelById(m.model_id)">
-                      <i class="fas fa-play"></i> 调用
-                    </button>
-                  </td>
-                </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <!-- ==================== 数据源目录 ==================== -->
           <div class="module-content" v-if="activeCategory === 'sources'">
             <div class="module-header">
               <h2><i class="fas fa-book-open"></i> 数据源目录</h2>
-              <p class="module-desc">44个外部数据源统一管理 — 公开数据、仅元数据/链接、需授权/内部数据，共三个接入等级</p>
+              <p class="module-desc">{{ dataSources.length }}个外部数据源统一管理 — 公开数据、仅元数据/链接、需授权/内部数据，共三个接入等级</p>
             </div>
 
             <!-- 数据源统计卡片 -->
@@ -928,7 +897,7 @@
               <div class="data-item">
                 <dl>
                   <dt>数据源总数</dt>
-                  <dd>44</dd>
+                  <dd>{{ dataSources.length }}</dd>
                   <dd class="trend up">持续增加</dd>
                 </dl>
                 <div class="card-icon">
@@ -938,7 +907,7 @@
               <div class="data-item">
                 <dl>
                   <dt>公开数据</dt>
-                  <dd>28</dd>
+                  <dd>{{ publicDataSourceCount }}</dd>
                   <dd class="trend up">直接接入</dd>
                 </dl>
                 <div class="card-icon">
@@ -948,7 +917,7 @@
               <div class="data-item">
                 <dl>
                   <dt>需授权/内部</dt>
-                  <dd>16</dd>
+                  <dd>{{ restrictedDataSourceCount }}</dd>
                   <dd class="trend down">按需接入</dd>
                 </dl>
                 <div class="card-icon">
@@ -977,7 +946,7 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr v-for="ds in dataSources" :key="ds.id" class="clickable-row" @click="openSourceDetail(ds)">
+                <tr v-for="ds in paginatedDataSources" :key="ds.id" class="clickable-row" @click="openSourceDetail(ds)">
                   <td><code>{{ ds.id }}</code></td>
                   <td>{{ ds.category }}</td>
                   <td><strong>{{ ds.name }}</strong></td>
@@ -996,6 +965,17 @@
                 </tr>
                 </tbody>
               </table>
+              <div class="pagination table-pagination" v-if="dataSourcePages > 1">
+                <button class="page-btn" :disabled="dataSourcePage === 1" @click="dataSourcePage--">
+                  <i class="fas fa-chevron-left"></i> 上一页
+                </button>
+                <span class="page-info">
+                  共 {{ dataSources.length }} 项 · 第 {{ dataSourcePage }} / {{ dataSourcePages }} 页
+                </span>
+                <button class="page-btn" :disabled="dataSourcePage === dataSourcePages" @click="dataSourcePage++">
+                  下一页 <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1096,6 +1076,8 @@ export default {
         scenario: '',
         priority: ''
       },
+      modelCardPage: 1,
+      modelCardPageSize: 12,
       // 从后端 API 获取的模型列表
       registeredModels: [],
       // 动力学搜索参数
@@ -1119,7 +1101,9 @@ export default {
       showReactionResults: false,
       reactionResults: [],
       sourceDetail: null,        // 当前查看的数据源详情
-    showSourceModal: false,
+      showSourceModal: false,
+      dataSourcePage: 1,
+      dataSourcePageSize: 10,
       // 数据源目录数据
       dataSources: [
         { id: 'DS001', category: '热化学/物性', name: 'NIST Chemistry WebBook', provider: 'NIST', access: '网页/批量下载', openLabel: '公开', openClass: 'open', priority: 'P0', url: 'https://webbook.nist.gov/chemistry/' },
@@ -1155,12 +1139,45 @@ export default {
       const s = (this.reactionPage - 1) * 10;
       return this.reactionResults.slice(s, s + 10);
     },
-    // 筛选的模型卡片（本地模拟）
+    dataSourcePages() {
+      return Math.max(1, Math.ceil(this.dataSources.length / this.dataSourcePageSize));
+    },
+    paginatedDataSources() {
+      const start = (this.dataSourcePage - 1) * this.dataSourcePageSize;
+      return this.dataSources.slice(start, start + this.dataSourcePageSize);
+    },
+    publicDataSourceCount() {
+      return this.dataSources.filter(source => source.openClass === 'open').length;
+    },
+    restrictedDataSourceCount() {
+      return this.dataSources.length - this.publicDataSourceCount;
+    },
+    registeredModelCards() {
+      if (!this.registeredModels.length) return this.modelCardData;
+      return this.registeredModels.map(model => ({
+        id: model.model_code || model.model_id,
+        name: model.name || model.model_name || model.model_code || model.model_id,
+        scenario: model.scenario || model.category || '未分类',
+        type: model.model_type || '注册工具',
+        priority: model.priority || 'P2',
+      }));
+    },
+    modelScenarioOptions() {
+      return [...new Set(this.registeredModelCards.map(model => model.scenario))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    },
+    modelPriorityOptions() {
+      return [...new Set(this.registeredModelCards.map(model => model.priority))].sort();
+    },
+    // 筛选的注册模型卡片
     filteredModels() {
-      let list = this.modelCardData;
+      let list = this.registeredModelCards;
       if (this.modelFilter.keyword) {
-        const kw = this.modelFilter.keyword.toLowerCase();
-        list = list.filter(m => m.id.toLowerCase().includes(kw) || m.name.includes(kw));
+        const kw = this.modelFilter.keyword.trim().toLowerCase();
+        list = list.filter(model =>
+          model.id.toLowerCase().includes(kw)
+          || model.name.toLowerCase().includes(kw)
+          || model.scenario.toLowerCase().includes(kw)
+        );
       }
       if (this.modelFilter.scenario) {
         list = list.filter(m => m.scenario === this.modelFilter.scenario);
@@ -1170,7 +1187,14 @@ export default {
       }
       return list;
     },
-    // 本地模拟模型卡片数据（实际从后端 API 获取）
+    modelCardPages() {
+      return Math.max(1, Math.ceil(this.filteredModels.length / this.modelCardPageSize));
+    },
+    paginatedFilteredModels() {
+      const start = (this.modelCardPage - 1) * this.modelCardPageSize;
+      return this.filteredModels.slice(start, start + this.modelCardPageSize);
+    },
+    // API 不可用时保留的最小降级清单，不参与正常注册工具计数
     modelCardData() {
       return [
         { id: 'A001', name: '单位换算', scenario: '通用数据与校验', type: '确定性公式', priority: 'P0' },
@@ -1192,6 +1216,11 @@ export default {
         { id: 'C002', name: '扩散系数计算', scenario: '动力学与传递', type: '确定性公式', priority: 'P0' },
       ];
     }
+  },
+  watch: {
+    'modelFilter.keyword'() { this.modelCardPage = 1; },
+    'modelFilter.scenario'() { this.modelCardPage = 1; },
+    'modelFilter.priority'() { this.modelCardPage = 1; },
   },
   methods: {
     switchCategory(category) {
@@ -1271,6 +1300,7 @@ export default {
               url: s.access_url || '',
               ingestion: s.ingestion_mode,
             }));
+            this.dataSourcePage = 1;
           }
         })
         .catch(err => console.warn('数据源 API 不可用，使用本地数据', err));
@@ -1333,11 +1363,6 @@ export default {
 
     // ── 模型工具方法 ──
 
-    statusLabel(status) {
-      const labels = { planned: '规划中', dev: '开发中', validated: '已验证', deployed: '已部署' };
-      return labels[status] || status || '开发中';
-    },
-
     openModelDetail(model) {
       alert(`模型详情：${model.id} ${model.name}\n场景：${model.scenario}\n类型：${model.type}\n优先级：${model.priority}\n说明：基于统一Tool Schema注册，支持前端自动生成调用表单。`);
     },
@@ -1358,7 +1383,10 @@ export default {
         const resp = await fetch('/api/v1/models');
         if (resp.ok) {
           const data = await resp.json();
-          this.registeredModels = data.models || [];
+          this.registeredModels = (data.models || []).filter(model =>
+            model.count_eligible === true || model.eligibility?.fully_eligible === true
+          );
+          this.modelCardPage = 1;
         }
       } catch (e) {
         console.warn('模型微服务不可用，使用本地模拟数据', e.message);
@@ -1367,6 +1395,7 @@ export default {
           model_id: m.id, name: m.name, scenario: m.scenario,
           model_type: m.type, priority: m.priority, status: 'dev',
         }));
+        this.modelCardPage = 1;
       }
     },
 
@@ -2098,6 +2127,9 @@ export default {
   margin-top: auto;
   padding-top: 12px;
 }
+.model-empty-state { margin-top: 18px; padding: 28px; border: 1px dashed #d6dce6; border-radius: 10px; color: #7b8494; background: #fafbfc; text-align: center; font-size: 13px; }
+.model-empty-state i { margin-right: 6px; color: #0046DB; }
+.model-card-pagination { margin-top: 20px; }
 
 /* ── 状态标签 ── */
 .status-tag {

@@ -80,7 +80,7 @@ class G001_MeshScaleEstimate(BaseModelTool):
         rel("upstream_of", "G002", "G001输出的网格宽度可进入显式稳定性校验"),
     ]
     input_fields = [
-        InputField("domain_lengths_m", "各轴计算域长度", "object", unit="m", description="轴名到正长度的非空映射，例如{x:1,y:0.5}"),
+        InputField("domain_lengths_m", "各轴计算域长度", "object", unit="m", description="1至3个唯一非空轴名到正长度的映射，例如{x:1,y:0.5}", json_schema={"type": "object", "minProperties": 1, "maxProperties": 3, "propertyNames": {"type": "string", "minLength": 1}, "additionalProperties": {"type": "number", "minimum": 1e-12}}),
         InputField("resolution_drivers", "分辨率驱动", "array", items=RESOLUTION_DRIVER_SCHEMA, min_items=1, max_items=100),
         InputField("refinement_ratio", "相邻网格细化比", "number", required=False, default=2.0, unit="1", min_value=1.1, max_value=4.0),
         InputField("qoi_values_coarse_to_fine", "粗中细网格同一QOI", "array", required=False, items={"type": "number"}, min_items=3, max_items=3, description="可选；顺序严格为coarse, medium, fine，三者单位相同"),

@@ -633,7 +633,7 @@ class G009_LocalSensitivity(W17FormulaTool):
     ]
     input_fields = [
         InputField("target_model_code", "目标注册工具代码", "string"),
-        InputField("base_arguments", "目标工具基准参数", "object"),
+        InputField("base_arguments", "目标工具基准参数", "object", description="目标注册工具的完整参数对象；本层允许动态键，执行前仍按目标工具Schema和业务规则校验", json_schema={"type": "object", "additionalProperties": True}),
         InputField("output_path", "目标标量输出点分路径", "string"),
         InputField("parameter_steps", "待扰动参数与绝对步长", "array", items=SENSITIVITY_PARAMETER_SCHEMA, min_items=1, max_items=12),
         InputField("allow_target_boundary_warnings", "允许目标适用域警告", "boolean", required=False, default=False),
@@ -843,7 +843,7 @@ class G010_MonteCarloUncertainty(W17FormulaTool):
     ]
     input_fields = [
         InputField("target_model_code", "目标注册工具代码", "string"),
-        InputField("base_arguments", "目标工具基准参数", "object"),
+        InputField("base_arguments", "目标工具基准参数", "object", description="目标注册工具的完整参数对象；本层允许动态键，执行前仍按目标工具Schema和业务规则校验", json_schema={"type": "object", "additionalProperties": True}),
         InputField("output_path", "目标标量输出点分路径", "string"),
         InputField("uncertain_parameters", "不确定参数分布", "array", items=UNCERTAIN_PARAMETER_SCHEMA, min_items=1, max_items=8),
         InputField("correlation_matrix", "潜在正态相关矩阵", "array", unit="1", items={"type": "array", "items": {"type": "number"}, "minItems": 1, "maxItems": 8}, min_items=1, max_items=8),

@@ -10,6 +10,29 @@ from .base import BaseModelTool, BoundaryCheck, BoundaryWarning, InputField, Mod
 
 SCENARIO = "高炉低碳"
 
+HEAT_TERM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "enum": ["sensible", "reaction", "phase_change", "loss", "electrical", "other"]},
+        "heat_kj": {"type": "number", "minimum": 0},
+    },
+    "required": ["name", "category", "heat_kj"],
+    "additionalProperties": False,
+}
+
+FUEL_CHON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "C": {"type": "number", "minimum": 0},
+        "H": {"type": "number", "minimum": 0, "default": 0},
+        "O": {"type": "number", "minimum": 0, "default": 0},
+        "N": {"type": "number", "minimum": 0, "default": 0},
+    },
+    "required": ["C"],
+    "additionalProperties": False,
+}
+
 
 def rel(kind: str, target: str, description: str) -> dict[str, str]:
     return {"type": kind, "target": target, "description": description}
@@ -153,10 +176,10 @@ class E007_BFZonalHeatBalance(W9BFFormulaTool):
     ]
     input_fields = [
         InputField("hot_metal_mass_kg", "铁水产量", "number", unit="kg/$basis", min_value=1e-12),
-        InputField("high_zone_heat_inputs", "高温区外部热输入", "array", items={"type": "object"}, min_items=1, description="[{name,category,heat_kj}]"),
-        InputField("high_zone_heat_outputs", "高温区外部热输出", "array", items={"type": "object"}, min_items=1, description="[{name,category,heat_kj}]"),
-        InputField("low_zone_heat_inputs", "低温区外部热输入", "array", items={"type": "object"}, min_items=1, description="[{name,category,heat_kj}]"),
-        InputField("low_zone_heat_outputs", "低温区外部热输出", "array", items={"type": "object"}, min_items=1, description="[{name,category,heat_kj}]"),
+        InputField("high_zone_heat_inputs", "高温区外部热输入", "array", items=HEAT_TERM_SCHEMA, min_items=1, description="[{name,category,heat_kj}]"),
+        InputField("high_zone_heat_outputs", "高温区外部热输出", "array", items=HEAT_TERM_SCHEMA, min_items=1, description="[{name,category,heat_kj}]"),
+        InputField("low_zone_heat_inputs", "低温区外部热输入", "array", items=HEAT_TERM_SCHEMA, min_items=1, description="[{name,category,heat_kj}]"),
+        InputField("low_zone_heat_outputs", "低温区外部热输出", "array", items=HEAT_TERM_SCHEMA, min_items=1, description="[{name,category,heat_kj}]"),
         InputField("high_to_low_interface_heat_kj", "高温区传向低温区热量", "number", unit="kJ/$basis", min_value=0),
         InputField("absolute_tolerance_kj", "绝对闭合容差", "number", required=False, default=1e-6, unit="kJ/$basis", min_value=0),
         InputField("relative_tolerance", "相对闭合容差", "number", required=False, default=1e-8, unit="1", min_value=0, max_value=1),
@@ -391,7 +414,7 @@ class E012_TuyereTheoreticalGas(W9BFFormulaTool):
         InputField("dry_blast_oxygen_mole_fraction", "干风O2摩尔分数", "number", unit="1", min_value=0, max_value=1),
         InputField("supplemental_oxygen_nm3", "富氧标况体积", "number", unit="Nm3 O2/$basis", min_value=0),
         InputField("steam_kmol", "鼓风水蒸气", "number", unit="kmol H2O/$basis", min_value=0),
-        InputField("fuel_element_atoms_kmol", "燃料元素原子量", "object", description="{C,H,O,N}，单位均为kmol atoms/$basis，C必填"),
+        InputField("fuel_element_atoms_kmol", "燃料元素原子量", "object", description="{C,H,O,N}，单位均为kmol atoms/$basis；C必填，H/O/N省略按0", json_schema=FUEL_CHON_SCHEMA),
         InputField("normal_molar_volume_nm3_kmol", "标况摩尔体积", "number", required=False, default=22.414, unit="Nm3/kmol", min_value=1e-12),
     ]
     output_fields = [

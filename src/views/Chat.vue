@@ -266,8 +266,8 @@
                           <path d="M12 6v6l4 2"></path>
                         </svg>
                       </span>
-                      <span class="node-label">小模型</span>
-                      <span class="node-desc">数值计算</span>
+                      <span class="node-label">真实工具</span>
+                      <span class="node-desc">注册执行</span>
                     </div>
                   </div>
                   <div class="flow-arrow">
@@ -286,7 +286,7 @@
                           <line x1="16" y1="17" x2="8" y2="17"></line>
                         </svg>
                       </span>
-                      <span class="node-label">结果汇总</span>
+                      <span class="node-label">结果回传</span>
                     </div>
                   </div>
                   <div class="flow-arrow">
@@ -308,52 +308,11 @@
                   </div>
                 </div>
 
-                <!-- 小模型能力列表 -->
+                <!-- 合格工具入口 -->
                 <div class="capabilities-section">
-                  <h4>专业小模型能力</h4>
-                  <div class="capability-tags">
-                    <span class="capability-tag" :class="{ 'tag-active': activeTool === 'thermodynamics' }" @click="selectTool('thermodynamics')">热力学推理</span>
-                    <span class="capability-tag" :class="{ 'tag-active': activeTool === 'converter' }" @click="selectTool('converter')">转炉炼钢优化</span>
-                    <span class="capability-tag" :class="{ 'tag-active': activeTool === 'blastfurnace' }" @click="selectTool('blastfurnace')">高炉低碳运行</span>
-                    <span class="capability-tag" :class="{ 'tag-active': activeTool === 'casting' }" @click="selectTool('casting')">连铸质量分析</span>
-                    <span class="capability-tag" :class="{ 'tag-active': activeTool === 'simulation' }" @click="selectTool('simulation')">仿真与工单</span>
-                  </div>
-                </div>
-
-                <!-- 小模型对话 -->
-                <div v-if="activeTool" class="tool-form-section">
-                  <div class="tool-form-header">
-                    <span class="tool-form-icon">{{ toolIcon }}</span>
-                    <span class="tool-form-title">{{ toolName }}</span>
-                  </div>
-                  <div v-if="toolMessages.length === 0" class="tool-dialog-hint">
-                    <div class="tool-dialog-examples">
-                      <div class="tool-example-list">
-                        <p><strong>试试这样提问：</strong></p>
-                        <p class="example-item" @click="sendToolMsg($event, true)"
-                           v-for="(ex, i) in toolExamples" :key="i">{{ ex }}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="tool-msg-list" v-if="toolMessages.length > 0">
-                    <div v-for="(msg, i) in toolMessages" :key="i" class="tool-msg-item">
-                      <div class="tool-msg-role" :class="msg.role">{{ msg.role === 'user' ? '你' : toolName }}</div>
-                      <div class="tool-msg-bubble" :class="msg.role">{{ msg.content }}</div>
-                      <div v-if="msg.result" class="tool-result-section" v-html="makeToolCard(msg.result)"></div>
-                    </div>
-                  </div>
-                  <div class="tool-dialog-input">
-                    <textarea
-                      v-model="toolQuery"
-                      placeholder="输入问题..."
-                      rows="2"
-                      class="tool-textarea"
-                      @keydown.enter.ctrl="sendToolMsg"
-                    ></textarea>
-                    <button class="tool-btn-run" @click="sendToolMsg" :disabled="toolLoading || !toolQuery.trim()">
-                      {{ toolLoading ? '思考中...' : '发送' }}
-                    </button>
-                  </div>
+                  <h4>120 个合格可执行工具</h4>
+                  <p class="qualified-tool-note">主对话会自动选择注册工具、校验参数并执行，再依据结果回答；不再使用原有场景壳模型。</p>
+                  <router-link to="/scene" class="qualified-tool-link">查看工具注册中心与执行证据</router-link>
                 </div>
               </div>
             </transition>
@@ -393,34 +352,8 @@ export default {
       isLoading: false,
       error: null,
       attachedFiles: [],
-      showArchitecture: false,
-      // 小模型独立工具
-      activeTool: null,
-      toolLoading: false,
-      toolResult: null,
-      toolQuery: '',
-      toolMessages: []
+      showArchitecture: false
     };
-  },
-  computed: {
-    toolIcon() {
-      const icons = { thermodynamics: 'TD', converter: 'CO', blastfurnace: 'BF', casting: 'CC', simulation: 'SIM' };
-      return icons[this.activeTool] || 'TL';
-    },
-    toolName() {
-      const names = { thermodynamics: '热力学推理', converter: '转炉炼钢工艺优化', blastfurnace: '高炉低碳运行分析', casting: '连铸质量辅助决策', simulation: '对话式仿真与工单协同' };
-      return names[this.activeTool] || '';
-    },
-    toolExamples() {
-      const examples = {
-        thermodynamics: ['FeO + C → Fe + CO 在 1600°C 能否反应', 'CaCO₃ 在 900°C 能分解吗', '铝热反应需要多高温度'],
-        converter: ['铁水 Si 0.5% 目标碳 0.05% 温度 1600°C 终点预测', 'Si 0.8% 目标碳 0.08% 需要多少氧'],
-        blastfurnace: ['焦比 360 煤比 160 日产量 5000t 碳排放多少', '焦比 380 煤比 150 产量 4500 评估碳排放'],
-        casting: ['Q235B 200x200mm 拉速 1.2 过热度 30 质量预测', 'HRB400 150x150mm 拉速 1.8 过热度 25'],
-        simulation: ['转炉炼钢 45分钟 生成操作工单', 'LF精炼 30分钟 精炼炉 仿真工单']
-      };
-      return examples[this.activeTool] || [];
-    }
   },
   mounted() {
     console.log('🚀 聊天页面加载，使用统一的request.js');
@@ -442,7 +375,6 @@ export default {
     },
     async sendMessage() {
       if (!this.inputMessage.trim() || this.isLoading) return;
-
       const userMessage = this.inputMessage.trim();
       this.inputMessage = '';
       this.error = null;
@@ -536,74 +468,8 @@ export default {
       }
     },
 
-    _escapeHtml(str) {
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    },
-
     toggleArchitecture() {
       this.showArchitecture = !this.showArchitecture;
-    },
-
-    selectTool(toolId) {
-      if (this.activeTool === toolId) {
-        this.activeTool = null;
-        this.toolResult = null;
-        this.toolMessages = [];
-      } else {
-        this.activeTool = toolId;
-        this.toolResult = null;
-        this.toolQuery = '';
-        this.toolMessages = [];
-      }
-    },
-
-    makeToolCard(r) {
-      if (!r) return '';
-      let html = `<div class="sml-card sml-model-${r.modelId}">`;
-      html += `<div class="sml-card-header"><span class="sml-card-icon">${r.icon}</span><span class="sml-card-title">${r.modelName}</span><span class="sml-card-badge">计算结果</span></div>`;
-      html += `<div class="sml-card-body">`;
-      html += `<div class="sml-card-summary">${this._escapeHtml(r.result.summary)}</div>`;
-      if (r.result.data && Object.keys(r.result.data).length > 0) {
-        html += `<table class="sml-card-table">`;
-        for (const [key, value] of Object.entries(r.result.data)) {
-          html += `<tr><td class="sml-label">${this._escapeHtml(key)}</td><td class="sml-value">${this._escapeHtml(String(value))}</td></tr>`;
-        }
-        html += `</table>`;
-      }
-      if (r.result.unit) {
-        html += `<div class="sml-card-unit">单位：${this._escapeHtml(r.result.unit)}</div>`;
-      }
-      html += `</div></div>`;
-      return html;
-    },
-
-    async sendToolMsg(event, isExample = false) {
-      const text = isExample ? event.target.textContent.trim().replace(/^•\s*/, '') : this.toolQuery;
-      if (!text.trim()) return;
-      this.toolQuery = '';
-      this.toolMessages.push({ role: 'user', content: text });
-      this.toolLoading = true;
-      try {
-        const history = this.toolMessages.slice(0, -1).map(m => ({ role: m.role === '你' ? 'user' : 'assistant', content: m.content }));
-        const res = await request.post(`/tools/${this.activeTool}/chat`, { message: text, history });
-        if (res.code === 200) {
-          this.toolMessages.push({
-            role: 'assistant',
-            content: res.data.reply,
-            result: res.data.result
-          });
-        } else {
-          this.toolMessages.push({ role: 'assistant', content: '抱歉，处理时出现问题。' });
-        }
-      } catch (err) {
-        this.toolMessages.push({ role: 'assistant', content: '请求失败：' + (err.message || '网络错误') });
-      } finally {
-        this.toolLoading = false;
-        this.$nextTick(() => {
-          const el = this.$el.querySelector('.tool-msg-list');
-          if (el) el.scrollTop = el.scrollHeight;
-        });
-      }
     },
 
     quickQuestion(question) {
@@ -1860,10 +1726,35 @@ export default {
   flex-shrink: 0;
 }
 
-/* ---- 小模型能力标签 ---- */
+/* ---- 真实工具注册中心入口 ---- */
 .capabilities-section {
   border-top: 1px solid #e8ecf4;
   padding-top: 20px;
+}
+
+.qualified-tool-note {
+  max-width: 620px;
+  margin: 0 auto 12px;
+  color: #697386;
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.qualified-tool-link {
+  display: table;
+  margin: 0 auto;
+  padding: 8px 15px;
+  border: 1px solid #0046DB;
+  color: #0046DB;
+  background: #fff;
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.qualified-tool-link:hover {
+  color: #fff;
+  background: #0046DB;
 }
 
 .capabilities-section h4 {

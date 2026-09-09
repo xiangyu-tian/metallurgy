@@ -176,18 +176,21 @@
       </section>
     </div>
   </div>
+  <LiteratureSection domainCode="steel_metallurgy" domainName="钢铁冶金" />
   <Footer></Footer>
 </template>
 
 <script>
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
+import LiteratureSection from "@/components/LiteratureSection.vue";
 
 export default {
   name: "SteelMetallurgy",
   components: {
     Header,
     Footer,
+    LiteratureSection,
   },
   data() {
     return {

@@ -41,6 +41,52 @@ def finite_number(value, label: str, *, minimum: Optional[float] = None, maximum
     return parsed, None
 
 
+def mass_stream_schema(categories: Iterable[str], *, fraction_field: Optional[str] = None,
+                       state_field: Optional[str] = None, moisture: bool = False) -> dict:
+    properties = {
+        "name": {"type": "string", "minLength": 1},
+        "category": {"type": "string", "enum": sorted(categories)},
+        "mass_kg": {"type": "number", "minimum": 0},
+    }
+    required = ["name", "category", "mass_kg"]
+    if fraction_field:
+        properties[fraction_field] = {"type": "number", "minimum": 0, "maximum": 1}
+        required.append(fraction_field)
+    if state_field:
+        properties[state_field] = {"type": "number", "minimum": 0, "maximum": 8}
+        required.append(state_field)
+    if moisture:
+        properties["moisture_fraction"] = {"type": "number", "minimum": 0, "maximum": 1, "default": 0}
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required,
+        "additionalProperties": False,
+    }
+
+
+def gas_stream_schema(species: Iterable[str]) -> dict:
+    composition = {
+        "type": "object",
+        "properties": {
+            name: {"type": "number", "minimum": 0, "maximum": 1}
+            for name in sorted(species)
+        },
+        "minProperties": 1,
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string", "minLength": 1},
+            "amount_kmol": {"type": "number", "minimum": 0},
+            "composition": composition,
+        },
+        "required": ["name", "amount_kmol", "composition"],
+        "additionalProperties": False,
+    }
+
+
 class BFFormulaTool(BaseModelTool):
     scenario = SCENARIO
     priority = "P0"
@@ -124,8 +170,8 @@ class E001_BFBurdenBalance(BFFormulaTool):
     ]
     input_fields = [
         InputField("basis", "统计基准", "select", enum=["per_hour", "per_day", "per_t_hot_metal"]),
-        InputField("input_streams", "输入物流", "array", items={"type": "object"}, description="[{name,category,mass_kg,moisture_fraction?}]"),
-        InputField("output_streams", "输出物流", "array", items={"type": "object"}, description="同输入结构；必须包含正质量hot_metal物流"),
+        InputField("input_streams", "输入物流", "array", items=mass_stream_schema({"ore", "sinter", "pellet", "coke", "coal", "biomass", "flux", "blast", "oxygen", "steam", "other"}, moisture=True), min_items=1, description="[{name,category,mass_kg,moisture_fraction?}]"),
+        InputField("output_streams", "输出物流", "array", items=mass_stream_schema({"hot_metal", "slag", "top_gas", "dust", "sludge", "water_loss", "other"}, moisture=True), min_items=1, description="同输入结构；必须包含正质量hot_metal物流"),
         InputField("absolute_tolerance_kg", "绝对容差", "number", required=False, default=1e-6, unit="kg/$basis", min_value=0),
         InputField("relative_tolerance", "相对容差", "number", required=False, default=1e-8, unit="1", min_value=0, max_value=1),
     ]
@@ -233,8 +279,8 @@ class E002_BFIronBalance(BFFormulaTool):
     ]
     input_fields = [
         InputField("basis", "统计基准", "select", enum=["per_hour", "per_day", "per_t_hot_metal"]),
-        InputField("input_streams", "含铁输入物流", "array", items={"type": "object"}, description="[{name,category,mass_kg,fe_mass_fraction,fe_oxidation_state}]"),
-        InputField("output_streams", "含铁输出物流", "array", items={"type": "object"}, description="同输入结构"),
+        InputField("input_streams", "含铁输入物流", "array", items=mass_stream_schema({"ore", "sinter", "pellet", "scrap", "metal_addition", "other"}, fraction_field="fe_mass_fraction", state_field="fe_oxidation_state"), min_items=1, description="[{name,category,mass_kg,fe_mass_fraction,fe_oxidation_state}]"),
+        InputField("output_streams", "含铁输出物流", "array", items=mass_stream_schema({"hot_metal", "slag", "dust", "sludge", "other"}, fraction_field="fe_mass_fraction", state_field="fe_oxidation_state"), min_items=1, description="同输入结构"),
         InputField("absolute_tolerance_kg", "Fe绝对容差", "number", required=False, default=1e-6, unit="kg Fe/$basis", min_value=0),
         InputField("relative_tolerance", "Fe相对容差", "number", required=False, default=1e-8, unit="1", min_value=0, max_value=1),
     ]
@@ -355,9 +401,9 @@ class E003_BFCarbonBalance(BFAtomicWeightTool):
     relations = [rel("uses_data_of", "A003", "使用相同IUPAC原子量数据库版本"), rel("depends_on", "E001", "沿用统计基准和铁水产量"), rel("overlaps", "E004", "CO/CO2同时参与碳和氧平衡")]
     input_fields = [
         InputField("basis", "统计基准", "select", enum=["per_hour", "per_day", "per_t_hot_metal"]),
-        InputField("material_inputs", "含碳输入物料", "array", required=False, items={"type": "object"}, description="[{name,category,mass_kg,carbon_mass_fraction}]"),
-        InputField("material_outputs", "含碳输出物料", "array", required=False, items={"type": "object"}, description="铁水/尘/渣等"),
-        InputField("gas_outputs", "含碳气体输出", "array", required=False, items={"type": "object"}, description="[{name,amount_kmol,composition:{CO,CO2,CH4}}]"),
+        InputField("material_inputs", "含碳输入物料", "array", required=False, items=mass_stream_schema({"coke", "coal", "biomass", "gas_fuel", "flux", "other"}, fraction_field="carbon_mass_fraction"), min_items=1, description="[{name,category,mass_kg,carbon_mass_fraction}]"),
+        InputField("material_outputs", "含碳输出物料", "array", required=False, items=mass_stream_schema({"hot_metal", "dust", "slag", "sludge", "other"}, fraction_field="carbon_mass_fraction"), min_items=1, description="铁水/尘/渣等"),
+        InputField("gas_outputs", "含碳气体输出", "array", required=False, items=gas_stream_schema({"CO", "CO2", "CH4"}), min_items=1, description="[{name,amount_kmol,composition:{CO,CO2,CH4}}]"),
         InputField("hot_metal_mass_kg", "铁水产量", "number", unit="kg/$basis", min_value=1e-12),
         InputField("absolute_tolerance_kg", "C绝对容差", "number", required=False, default=1e-6, unit="kg C/$basis", min_value=0),
         InputField("relative_tolerance", "C相对容差", "number", required=False, default=1e-8, unit="1", min_value=0, max_value=1),
@@ -449,9 +495,9 @@ class E004_BFOxygenBalance(BFAtomicWeightTool):
     relations = [rel("uses_data_of", "A003", "使用相同IUPAC原子量数据库版本"), rel("depends_on", "E001", "沿用高炉统计基准和物流边界"), rel("overlaps", "E002", "Fe氧化态变化约束矿石结合氧去向"), rel("overlaps", "E003", "CO/CO2同时参与碳和氧平衡")]
     input_fields = [
         InputField("basis", "统计基准", "select", enum=["per_hour", "per_day", "per_t_hot_metal"]),
-        InputField("material_inputs", "含氧输入物料", "array", items={"type": "object"}, description="[{name,category,mass_kg,oxygen_mass_fraction}]"),
-        InputField("material_outputs", "含氧输出物料", "array", required=False, items={"type": "object"}),
-        InputField("gas_outputs", "含氧气体输出", "array", required=False, items={"type": "object"}, description="[{name,amount_kmol,composition:{CO,CO2,H2O,O2}}]"),
+        InputField("material_inputs", "含氧输入物料", "array", items=mass_stream_schema({"ore", "sinter", "pellet", "blast", "oxygen", "steam", "fuel", "flux", "other"}, fraction_field="oxygen_mass_fraction"), min_items=1, description="[{name,category,mass_kg,oxygen_mass_fraction}]"),
+        InputField("material_outputs", "含氧输出物料", "array", required=False, items=mass_stream_schema({"hot_metal", "slag", "dust", "sludge", "water", "other"}, fraction_field="oxygen_mass_fraction"), min_items=1),
+        InputField("gas_outputs", "含氧气体输出", "array", required=False, items=gas_stream_schema({"CO", "CO2", "H2O", "O2"}), min_items=1, description="[{name,amount_kmol,composition:{CO,CO2,H2O,O2}}]"),
         InputField("reduced_ore_oxygen_kg", "被还原矿石氧", "number", unit="kg O/$basis", min_value=0),
         InputField("indirect_reduction_oxygen_kg", "间接还原氧", "number", unit="kg O/$basis", min_value=0),
         InputField("absolute_tolerance_kg", "O绝对容差", "number", required=False, default=1e-6, unit="kg O/$basis", min_value=0),

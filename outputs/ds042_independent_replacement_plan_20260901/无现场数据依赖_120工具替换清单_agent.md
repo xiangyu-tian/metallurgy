@@ -251,7 +251,7 @@ P1-W18 已完成原5项，工作簿本页数据区为空；其实际状态、版
 | 96 | F018 | 夹杂物上浮时间 | 已实现 | P1-W15 | F018 | 是 | 连铸质量与二冷 | 显式球形夹杂尺寸/密度、钢液密度/黏度、距离和均匀竖直速度 | 否 | 否 | metallurgy.catalog.f018.inclusion_float_time.v1 | Stokes/Schiller–Naumann运动学；不使用质量检测标签、不声称捕获概率 |
 | 97 | G003 | 一维传热PDE求解 | 已实现 | P1-W16 | G003 | 是 | 仿真/优化/智能体支撑 | 显式几何、常物性、热源、初温、边界和稳定时间步 | 否 | 否 | metallurgy.catalog.g003.one_dimensional_heat_pde.v1 | 显式单元中心有限体积与能量闭合；不处理相变或温变物性 |
 | 98 | G004 | 反应ODE求解 | 已实现 | P1-W17 | G004 | 是 | 仿真/优化/智能体支撑 | 显式反应网络、化学计量、初始浓度、时间和求解设置 | 否 | 否 | metallurgy.catalog.g004.structured_mass_action_ode.v1 | 结构化质量作用+solve_ivp；不接受任意表达式，不含传热传质 |
-| 99 | G005 | OpenFOAM参数化导热案例生成 | 已实现 | P1-W18 | G005 | 是 | 仿真/优化/智能体支撑 | 显式长方体几何、网格、扩散率、边界与时间设置；仅生成OpenFOAM v13清单 | 否 | 否 | metallurgy.catalog.g005.openfoam_laplacian_case.v1 | 受限laplacianFoam案例清单；不写任意路径、不执行求解器 |
+| 99 | G005 | OpenFOAM参数化导热案例生成 | 已实现 | P1-W18 | G005 | 是 | 仿真/优化/智能体支撑 | 显式长方体几何、网格、扩散率、边界与时间设置；可返回清单或在项目固定目录生成真实OpenFOAM v13案例与ZIP | 否 | 否 | metallurgy.catalog.g005.openfoam_laplacian_case.v1 | 受限laplacianFoam案例资产；固定目录落盘、回读校验、同名冲突拒绝；不执行求解器 |
 | 100 | G006 | 注册工具参数化仿真批处理 | 已实现 | P1-W18 | G006 | 是 | 仿真/优化/智能体支撑 | 完全准入目标工具、显式基础参数、数值参数网格、配额与重试策略 | 否 | 否 | metallurgy.catalog.g006.registered_parametric_batch.v1 | 确定性笛卡尔参数批处理；只调用统一注册中心，不执行shell |
 | 101 | G008 | 插值与查表服务 | 已实现 | P1-W17 | G008 | 是 | 仿真/优化/智能体支撑 | 显式一/二维规则表、表ID/版本/单位、查询点与边界策略 | 否 | 否 | metallurgy.catalog.g008.regular_grid_lookup.v1 | 线性/双线性/确定性最近邻；不连接企业实时表，不隐式外推 |
 | 102 | G009 | 敏感性分析 | 已实现 | P1-W17 | G009 | 是 | 仿真/优化/智能体支撑 | 已认证目标工具、基准参数、标量输出路径和数值扰动步长 | 否 | 否 | metallurgy.catalog.g009.registered_tool_local_sensitivity.v1 | 安全注册工具中心差分；局部结果不等同全局敏感性，不执行任意代码 |

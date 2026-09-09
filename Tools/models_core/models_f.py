@@ -26,6 +26,16 @@ from .repositories.solidification_repository import load_database
 MODEL_ASSET_ID = "MATCALC-MC_FE-2.059-PYCALPHAD"
 LIQUID_THRESHOLD = 1e-6
 
+STEEL_SOLUTE_COMPOSITION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        component: {"type": "number", "minimum": 0}
+        for component in ("C", "Si", "Mn", "Cr", "Ni", "Mo", "Cu", "Al")
+    },
+    "minProperties": 1,
+    "additionalProperties": False,
+}
+
 
 def _normalise_composition(raw):
     if not isinstance(raw, dict) or not raw:
@@ -172,7 +182,7 @@ class _CalphadEndpointTool(BaseModelTool):
     failure_modes = ["组元不受支持或超数据库评估域", "温区未覆盖完整凝固区间", "模型记录未批准、资产缺失或哈希不符", "CALPHAD数值求解失败"]
     independent_validation = ["纯铁熔点区间检查", "液相分数随温度非递减", "液相线不低于固相线", "F001/F002端点与F004平衡曲线一致"]
     input_fields = [
-        InputField("composition_wt_percent", "钢中溶质质量百分数", "object", unit="wt%", description="Fe为余量；键限C/Si/Mn/Cr/Ni/Mo/Cu/Al"),
+        InputField("composition_wt_percent", "钢中溶质质量百分数", "object", unit="wt%", description="Fe为余量；键限C/Si/Mn/Cr/Ni/Mo/Cu/Al；至少一项大于0，溶质总量小于50", json_schema=STEEL_SOLUTE_COMPOSITION_SCHEMA),
         InputField("temperature_min_k", "搜索温度下限", "number", required=False, default=1300.0, unit="K", min_value=673, max_value=1999),
         InputField("temperature_max_k", "搜索温度上限", "number", required=False, default=1950.0, unit="K", min_value=674, max_value=2000),
         InputField("grid_step_k", "温度网格步长", "number", required=False, default=2.0, unit="K", min_value=0.5, max_value=10),
@@ -291,7 +301,7 @@ class F004_SolidFractionCurve(BaseModelTool):
         {"type":"contains_outputs_of","target":"F002","description":"平衡曲线的初液端点与F002固相线重叠"},
     ]
     input_fields = [
-        InputField("composition_wt_percent","钢中溶质质量百分数","object",unit="wt%",description="Fe为余量；键限C/Si/Mn/Cr/Ni/Mo/Cu/Al"),
+        InputField("composition_wt_percent","钢中溶质质量百分数","object",unit="wt%",description="Fe为余量；键限C/Si/Mn/Cr/Ni/Mo/Cu/Al；至少一项大于0，溶质总量小于50",json_schema=STEEL_SOLUTE_COMPOSITION_SCHEMA),
         InputField("model","凝固模型","select",required=False,default="equilibrium",enum=["equilibrium","scheil"]),
         InputField("start_temperature_k","起始高温","number",required=False,default=1900.0,unit="K",min_value=674,max_value=2000),
         InputField("end_temperature_k","终止低温","number",required=False,default=1400.0,unit="K",min_value=673,max_value=1999),

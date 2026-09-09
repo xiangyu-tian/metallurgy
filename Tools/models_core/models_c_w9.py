@@ -74,7 +74,7 @@ class C009_ThermalConductivityMixing(W9TransportTool):
         rel("overlaps", "B003", "均处理材料热物性，但B003计算显热而本工具计算有效导热系数"),
     ]
     input_fields = [
-        InputField("phases", "相及体积分数", "array", items={"type": "object"}, min_items=1, description="[{name,conductivity_w_m_k,volume_fraction}]"),
+        InputField("phases", "相及体积分数", "array", items={"type": "object", "properties": {"name": {"type": "string", "minLength": 1}, "conductivity_w_m_k": {"type": "number", "exclusiveMinimum": 0}, "volume_fraction": {"type": "number", "minimum": 0, "maximum": 1}}, "required": ["name", "conductivity_w_m_k", "volume_fraction"], "additionalProperties": False}, min_items=1, description="[{name,conductivity_w_m_k,volume_fraction}]；相名须唯一，体积分数和为1"),
         InputField("method", "混合模型", "select", enum=["parallel", "series", "maxwell_eucken"]),
         InputField("matrix_phase", "连续基体相名", "string", required=False, description="Maxwell–Eucken时必填"),
         InputField("fraction_tolerance", "体积分数和容差", "number", required=False, default=1e-9, unit="1", min_value=0, max_value=1e-3),

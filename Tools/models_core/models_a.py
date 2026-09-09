@@ -14,6 +14,60 @@ from .repositories.reference_repository import RepositoryError, atomic_weights
 
 SCENARIO = "通用数据与校验"
 
+DYNAMIC_NONNEGATIVE_COMPOSITION_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+DYNAMIC_MASS_FRACTION_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+}
+
+ELEMENT_MASS_STREAM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "mass": {"type": "number", "exclusiveMinimum": 0},
+        "elements": DYNAMIC_MASS_FRACTION_SCHEMA,
+    },
+    "required": ["mass", "elements"],
+    "additionalProperties": False,
+}
+
+DYNAMIC_VALENCE_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number"},
+}
+
+MIXED_VALENCE_SITE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "oxidation_state": {"type": "number"},
+        "count": {"type": "number", "exclusiveMinimum": 0},
+    },
+    "required": ["oxidation_state", "count"],
+    "additionalProperties": False,
+}
+
+OXIDATION_STATE_MAPPING_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {
+        "oneOf": [
+            {"type": "number"},
+            {"type": "array", "items": MIXED_VALENCE_SITE_SCHEMA, "minItems": 1},
+        ]
+    },
+}
+
 
 def _relation(relation_type: str, target: str, description: str) -> dict:
     return {"type": relation_type, "target": target, "description": description}
@@ -271,7 +325,7 @@ class A004_CompositionNormalizer(BaseModelTool):
     independent_validation = ["输出和为1", "正比例缩放不变性", "幂等性"]
     dependencies = []
     relations = [_relation("upstream_of", "A005", "归一化完整组成可作为物流质量分数"), _relation("upstream_of", "A007", "归一化元素组成用于当量计算")]
-    input_fields = [InputField("compositions", "组成", "object", unit="1", description="组分到非负数值映射"), InputField("input_basis", "输入基准", "select", False, "arbitrary", enum=list(_BASIS_SUM), description="fraction/percent/ppm/arbitrary"), InputField("tolerance", "基准总和容差", "number", False, 0.001, "1", 0, description="声明基准比较容差")]
+    input_fields = [InputField("compositions", "组成", "object", unit="1", description="组分到非负数值的非空映射，且至少一项大于0", json_schema=DYNAMIC_NONNEGATIVE_COMPOSITION_SCHEMA), InputField("input_basis", "输入基准", "select", False, "arbitrary", enum=list(_BASIS_SUM), description="fraction/percent/ppm/arbitrary"), InputField("tolerance", "基准总和容差", "number", False, 0.001, "1", 0, description="声明基准比较容差")]
     output_fields = [OutputField("normalized", "归一化组成", "object", description="总和为1的组成"), OutputField("sum_before", "归一化前总和", "number", "1", "输入总和"), OutputField("sum_after", "归一化后总和", "number", "1", "输出总和"), OutputField("expected_sum", "基准期望总和", "number", "1", "arbitrary用0表示"), OutputField("normalization_required", "是否调整", "boolean", description="原始总和是否不为1"), OutputField("input_basis", "输入基准", "string", description="采用基准"), OutputField("passed", "是否符合声明基准", "boolean", description="arbitrary总是通过")]
     validation_rules = [{"rule": "nonnegative_finite", "field": "compositions"}, {"rule": "positive_sum", "field": "compositions"}]
     qualification_cases = [
@@ -335,7 +389,7 @@ class A005_MassBalanceChecker(BaseModelTool):
     independent_validation = ["残差等于输入元素质量减输出元素质量", "物流拆分合并不改变结果"]
     dependencies = []
     relations = [_relation("accepts_output_of", "A004", "完整组成可先归一化"), _relation("uses_unit_contract_of", "A001", "物流质量应先换算到同一单位")]
-    input_fields = [InputField("input_streams", "输入物流", "array", items={"type": "object"}, description="含mass与elements的数组"), InputField("output_streams", "输出物流", "array", items={"type": "object"}, description="含mass与elements的数组"), InputField("mass_unit", "质量单位", "select", False, "kg", enum=["kg", "g", "t"], description="所有物流共同单位"), InputField("absolute_tolerance", "绝对容差", "number", False, .001, "$mass_unit", 0, description="质量残差绝对容差"), InputField("relative_tolerance", "相对容差", "number", False, 1e-6, "1", 0, 1, description="质量残差相对容差")]
+    input_fields = [InputField("input_streams", "输入物流", "array", items=ELEMENT_MASS_STREAM_SCHEMA, min_items=1, description="含mass与elements的非空数组；name可省略"), InputField("output_streams", "输出物流", "array", items=ELEMENT_MASS_STREAM_SCHEMA, min_items=1, description="含mass与elements的非空数组；name可省略"), InputField("mass_unit", "质量单位", "select", False, "kg", enum=["kg", "g", "t"], description="所有物流共同单位"), InputField("absolute_tolerance", "绝对容差", "number", False, .001, "$mass_unit", 0, description="质量残差绝对容差"), InputField("relative_tolerance", "相对容差", "number", False, 1e-6, "1", 0, 1, description="质量残差相对容差")]
     output_fields = [OutputField("element_balances", "逐元素平衡", "object", description="输入输出残差和闭合率"), OutputField("total_input_mass", "总输入质量", "number", "$mass_unit", "输入质量和"), OutputField("total_output_mass", "总输出质量", "number", "$mass_unit", "输出质量和"), OutputField("mass_residual", "总质量残差", "number", "$mass_unit", "输入减输出"), OutputField("mass_closure_rate", "总质量闭合率", "number", "1", "闭合率"), OutputField("max_element_residual", "最大元素残差", "number", "$mass_unit", "最大绝对残差"), OutputField("passed", "是否闭合", "boolean", description="总质量和元素均满足容差"), OutputField("mass_unit", "质量单位", "string", description="输出单位")]
     validation_rules = [{"rule": "positive_finite", "field": "*.mass"}, {"rule": "fraction_range", "field": "*.elements.*"}]
     qualification_cases = [
@@ -455,7 +509,7 @@ class A007_OxygenReductantEquivalent(BaseModelTool):
     independent_validation = ["电子当量为元素kmol与价态变化加权和", "4n_O2等于氧化电子当量", "碳供电子数等于还原需求"]
     dependencies = ["A004"]
     relations = [_relation("depends_on", "A004", "复用非负组成归一化"), _relation("uses_data_of", "A003", "使用相同原子量版本"), _relation("complements", "A006", "分别计算电子当量与校验原子守恒")]
-    input_fields = [InputField("composition", "元素质量组成", "object", unit="1", description="元素到非负质量份额"), InputField("basis_mass_kg", "基准质量", "number", unit="kg", min_value=1e-30, description="总质量"), InputField("initial_valences", "初始价态", "object", unit="1", description="每个元素初始氧化数"), InputField("target_valences", "目标价态", "object", unit="1", description="每个元素目标氧化数"), InputField("oxygen_purity", "供氧纯度", "number", False, 1.0, "1", 1e-12, 1.0, description="O2摩尔分数"), InputField("reductant_product", "碳氧化产物", "select", False, "CO", enum=["CO", "CO2"], description="CO或CO2")]
+    input_fields = [InputField("composition", "元素质量组成", "object", unit="1", description="元素到非负质量份额的非空映射，且至少一项大于0", json_schema=DYNAMIC_NONNEGATIVE_COMPOSITION_SCHEMA), InputField("basis_mass_kg", "基准质量", "number", unit="kg", min_value=1e-30, description="总质量"), InputField("initial_valences", "初始价态", "object", unit="1", description="每个组成元素到有限初始氧化数的完整映射", json_schema=DYNAMIC_VALENCE_SCHEMA), InputField("target_valences", "目标价态", "object", unit="1", description="每个组成元素到有限目标氧化数的完整映射", json_schema=DYNAMIC_VALENCE_SCHEMA), InputField("oxygen_purity", "供氧纯度", "number", False, 1.0, "1", 1e-12, 1.0, description="O2摩尔分数"), InputField("reductant_product", "碳氧化产物", "select", False, "CO", enum=["CO", "CO2"], description="CO或CO2")]
     output_fields = [OutputField("mode", "模式", "string", description="oxidation/reduction/neutral"), OutputField("normalized_composition", "归一化组成", "object", description="质量分数"), OutputField("electron_breakdown", "逐元素当量", "object", description="kmol价态与电子变化"), OutputField("net_electron_change_kmol", "净电子变化", "number", "kmol e-", "正氧化负还原"), OutputField("electron_equivalents_kmol", "电子当量绝对值", "number", "kmol e-", "绝对值"), OutputField("oxygen_required_kmol", "理论纯氧", "number", "kmol O2", "纯O2需求"), OutputField("oxygen_required_mass_kg", "理论纯氧质量", "number", "kg O2", "纯O2质量"), OutputField("oxygen_supply_kmol", "按纯度供氧", "number", "kmol gas", "供氧气体量"), OutputField("oxygen_supply_normal_volume_m3", "标准供氧体积", "number", "Nm3", "273.15K和101.325kPa"), OutputField("carbon_equivalent_kmol", "理论碳当量", "number", "kmol C", "纯碳需求"), OutputField("carbon_equivalent_mass_kg", "理论碳质量", "number", "kg C", "纯碳质量"), OutputField("reductant_product", "碳氧化产物", "string", description="CO或CO2"), OutputField("electron_balance_residual_kmol", "电子闭合残差", "number", "kmol e-", "供需残差")]
     validation_rules = [{"rule": "A004_nonnegative_normalization", "field": "composition"}, {"rule": "complete_valence_maps", "fields": ["initial_valences", "target_valences"]}]
     qualification_cases = [
@@ -518,7 +572,7 @@ class A101_ChargeValenceBalance(BaseModelTool):
     ]
     input_fields = [
         InputField("formula", "化学式", "string", placeholder="如 Al2O3 或 SO4", description="不含离子上标；目标电荷单独给出"),
-        InputField("oxidation_states", "氧化态映射", "object", unit="1", description="元素到氧化态数值，或[{oxidation_state,count}]混合价态位点列表"),
+        InputField("oxidation_states", "氧化态映射", "object", unit="1", description="元素到氧化态数值，或[{oxidation_state,count}]混合价态位点列表", json_schema=OXIDATION_STATE_MAPPING_SCHEMA),
         InputField("target_charge", "目标电荷", "number", required=False, default=0.0, unit="e/formula_unit", description="中性物质为0，阴离子为负"),
         InputField("tolerance", "电荷残差容差", "number", required=False, default=1e-12, unit="e/formula_unit", min_value=0.0),
     ]
@@ -640,7 +694,7 @@ class A008_MissingValueImputer(BaseModelTool):
     input_fields = [
         InputField("data", "数值数据矩阵", "array", items={"type": "array", "items": {"anyOf": [{"type": "number"}, {"type": "null"}]}}, description="行是样本，列是变量；缺失值用null"),
         InputField("columns", "列名", "array", items={"type": "string"}, description="列名数量必须等于矩阵列数"),
-        InputField("column_units", "列单位", "object", description="每个列名到单位字符串的完整映射，无量纲写1"),
+        InputField("column_units", "列单位", "object", description="每个列名到非空单位字符串的完整映射，无量纲写1", json_schema={"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "minLength": 1}, "additionalProperties": {"type": "string", "minLength": 1}}),
         InputField("method", "填补方法", "select", enum=["constant", "mean", "median", "most_frequent", "linear", "knn"]),
         InputField("constant_value", "常数填充值", "number", required=False, unit="$column_unit", description="method=constant时必填，按各列声明单位解释"),
         InputField("n_neighbors", "KNN邻居数", "number", required=False, default=3, unit="count", min_value=1, description="method=knn时使用"),

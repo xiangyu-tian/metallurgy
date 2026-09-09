@@ -2,6 +2,7 @@
 BaseModelTool — 统一模型基类
 """
 from __future__ import annotations
+from copy import deepcopy
 import math
 import uuid
 import time
@@ -9,6 +10,30 @@ from typing import Any, Dict, List, Optional, Callable
 from dataclasses import dataclass, field, asdict
 
 from .errors import STANDARD_ERROR_CODES
+
+
+def schema_contract_gaps(schema: Any, path: str = "$") -> List[str]:
+    """Return model-visible object locations whose nested value shape is unspecified."""
+    gaps: List[str] = []
+    if not isinstance(schema, dict):
+        return gaps
+    schema_type = schema.get("type")
+    object_typed = schema_type == "object" or (
+        isinstance(schema_type, list) and "object" in schema_type
+    )
+    if object_typed and not schema.get("properties") \
+            and "additionalProperties" not in schema:
+        gaps.append(path)
+    for name, child in (schema.get("properties") or {}).items():
+        gaps.extend(schema_contract_gaps(child, f"{path}.{name}"))
+    if isinstance(schema.get("items"), dict):
+        gaps.extend(schema_contract_gaps(schema["items"], f"{path}[]"))
+    if isinstance(schema.get("additionalProperties"), dict):
+        gaps.extend(schema_contract_gaps(schema["additionalProperties"], f"{path}.*"))
+    for keyword in ("anyOf", "oneOf", "allOf"):
+        for index, child in enumerate(schema.get(keyword) or []):
+            gaps.extend(schema_contract_gaps(child, f"{path}.{keyword}[{index}]"))
+    return gaps
 
 
 # ── 数据类 ──
@@ -85,6 +110,7 @@ class InputField:
         items: Optional[Dict[str, Any]] = None,
         min_items: Optional[int] = None,
         max_items: Optional[int] = None,
+        json_schema: Optional[Dict[str, Any]] = None,
     ):
         self.name = name
         self.label = label
@@ -103,6 +129,7 @@ class InputField:
         self.items = items
         self.min_items = min_items
         self.max_items = max_items
+        self.json_schema = deepcopy(json_schema) if json_schema is not None else None
 
     def to_dict(self) -> dict:
         d = {
@@ -113,6 +140,8 @@ class InputField:
             "description": self.description,
             "ui_type": self.ui_type,
         }
+        if self.json_schema:
+            d.update(deepcopy(self.json_schema))
         if self.default is not None:
             d["default"] = self.default
         if self.unit:
@@ -248,7 +277,8 @@ class BaseModelTool:
         """返回只含标准JSON Schema关键字的function-tool参数契约。"""
         properties = {}
         for field_spec in self.input_fields:
-            prop = {"type": field_spec.type}
+            prop = deepcopy(field_spec.json_schema) if field_spec.json_schema else {}
+            prop.setdefault("type", field_spec.type)
             description = field_spec.description or field_spec.label
             if field_spec.unit:
                 description = f"{description}；单位: {field_spec.unit}"
@@ -277,22 +307,32 @@ class BaseModelTool:
 
     def get_tool_definition(self, eligibility: Optional[Dict[str, Any]] = None) -> dict:
         """构建可直接交给大模型function calling的稳定工具定义。"""
+        parameters = self.get_llm_input_schema()
+        contract_gaps = schema_contract_gaps(parameters)
         return {
             "type": "function",
             "function": {
                 "name": self.tool_name,
                 "description": self.description or self.applicable_boundary,
-                "parameters": self.get_llm_input_schema(),
+                "parameters": parameters,
             },
             "tool_uid": self.tool_uid,
             "catalog_id": self.catalog_id,
             "catalog_mapping_status": self.catalog_mapping_status,
             "legacy_model_codes": list(self.legacy_model_codes),
             "model_code": self.model_id,
+            "model_name": self.name,
             "model_version": self.version,
             "category": self.scenario,
             "data_requirement": self.data_requirement,
             "required_dataset_ids": list(self.required_dataset_ids),
+            "formula_reference": self.formula_reference,
+            "source_version": self.source_version,
+            "source_records": list(self.source_records),
+            "input_contract": {
+                "status": "complete" if not contract_gaps else "underspecified_nested_schema",
+                "gaps": contract_gaps,
+            },
             "fully_eligible": bool((eligibility or {}).get("fully_eligible", False)),
         }
 

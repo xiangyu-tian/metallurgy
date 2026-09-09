@@ -316,7 +316,7 @@ class B022_MultiphaseGibbsMinimization(W12PhaseTool):
     input_fields = [
         InputField("temperature_k", "温度", "number", unit="K", min_value=1, max_value=10000),
         InputField("pressure_pa", "压力", "number", unit="Pa", min_value=1, max_value=1e9),
-        InputField("element_totals_mol", "元素总量", "object", unit="mol", description="键为元素标签，值为非负摩尔量"),
+        InputField("element_totals_mol", "元素总量", "object", unit="mol", description="1至8个元素标签到非负摩尔量的映射，且至少一项大于0", json_schema={"type": "object", "minProperties": 1, "maxProperties": 8, "propertyNames": {"type": "string", "minLength": 1, "maxLength": 32}, "additionalProperties": {"type": "number", "minimum": 0}}),
         InputField("species", "候选物种", "array", items=_species_schema, min_items=2, max_items=40),
     ]
     output_fields = [
@@ -650,6 +650,15 @@ class _ApprovedSteelCalphadTool(W12PhaseTool):
         "object",
         unit="wt%",
         description="Fe为余量；批准键限C/Si/Mn/Cr/Ni/Mo/Cu/Al，实际上限由数据库记录读取",
+        json_schema={
+            "type": "object",
+            "properties": {
+                component: {"type": "number", "minimum": 0}
+                for component in ("C", "Si", "Mn", "Cr", "Ni", "Mo", "Cu", "Al")
+            },
+            "minProperties": 1,
+            "additionalProperties": False,
+        },
     )
     _asset_field = InputField(
         "model_asset_id",

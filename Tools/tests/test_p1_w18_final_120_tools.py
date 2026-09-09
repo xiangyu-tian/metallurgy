@@ -7,7 +7,9 @@ import math
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -20,6 +22,7 @@ TOOLS = ROOT / "Tools"
 sys.path.insert(0, str(TOOLS))
 
 from models_core import ModelRegistry
+import models_core.models_g_w18 as models_g_w18
 from models_core.models_g_w18 import constrained_dominates
 from models_core.repositories.reference_repository import R_J_MOL_K
 from models_server import app
@@ -95,6 +98,74 @@ class P1W18Final120ToolsTests(unittest.TestCase):
             self.assertIn(boundary, first["files"]["0/T"])
             self.assertIn(boundary, first["files"]["system/blockMeshDict"])
         self.assertFalse(self.registry.invoke("G005", case_payload(self.registry, "G005", "G005-F1")).success)
+
+    def test_g005_materializes_readable_case_zip_idempotently_and_rejects_conflict(self):
+        payload = {
+            **case_payload(self.registry, "G005", "G005-N1"),
+            "artifact_mode": "directory_and_zip",
+        }
+        input_schema = self.registry.get("G005").get_llm_input_schema()
+        self.assertEqual(
+            input_schema["properties"]["artifact_mode"]["enum"],
+            ["manifest_only", "directory", "directory_and_zip"],
+        )
+        self.assertNotIn("artifact_mode", input_schema["required"])
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            artifact_root = Path(temporary_directory) / "openfoam_cases"
+            with patch.object(models_g_w18, "OPENFOAM_CASE_ROOT", artifact_root):
+                first = self.ok("G005", payload).result
+                case_directory = Path(first["case_directory"])
+                zip_path = Path(first["zip_path"])
+
+                self.assertTrue(first["materialized"])
+                self.assertTrue(first["readback_verified"])
+                self.assertFalse(first["artifact_reused"])
+                self.assertEqual(case_directory.parent.resolve(), artifact_root.resolve())
+                self.assertTrue(case_directory.is_dir())
+                self.assertTrue(zip_path.is_file())
+                self.assertTrue(Path(first["case_manifest_path"]).is_file())
+                self.assertTrue(first["structural_validation"]["verified"])
+
+                for relative_path, expected_content in first["files"].items():
+                    self.assertEqual(
+                        (case_directory / relative_path).read_text(encoding="utf-8"),
+                        expected_content,
+                    )
+                with zipfile.ZipFile(zip_path) as archive:
+                    self.assertEqual(
+                        set(archive.namelist()),
+                        {f"{payload['case_name']}/{path}" for path in first["files"]}
+                        | {f"{payload['case_name']}/case_manifest.json"},
+                    )
+                    self.assertEqual(
+                        archive.read(f"{payload['case_name']}/0/T").decode("utf-8"),
+                        first["files"]["0/T"],
+                    )
+
+                second = self.ok("G005", payload).result
+                self.assertTrue(second["artifact_reused"])
+                self.assertEqual(second["manifest_sha256"], first["manifest_sha256"])
+                self.assertEqual(second["zip_sha256"], first["zip_sha256"])
+
+                called = self.client.post(
+                    "/api/v1/tools/metallurgy_generate_openfoam_laplacian_case/call",
+                    json={"arguments": payload},
+                )
+                self.assertEqual(called.status_code, 200, called.text)
+                self.assertEqual(called.json()["status"], "success")
+                self.assertTrue(called.json()["output"]["materialized"])
+                self.assertTrue(called.json()["output"]["readback_verified"])
+                self.assertTrue(called.json()["output"]["artifact_reused"])
+
+                conflict = dict(payload)
+                conflict["left_temperature_k"] = payload["left_temperature_k"] + 1
+                failed = self.registry.invoke("G005", conflict)
+                self.assertFalse(failed.success)
+                self.assertEqual(failed.error_code, "INVALID_INPUT")
+                self.assertEqual(
+                    (case_directory / "0/T").read_text(encoding="utf-8"),
+                    first["files"]["0/T"],
+                )
 
     def test_g006_cartesian_results_match_direct_registry_calls(self):
         result = self.ok("G006", case_payload(self.registry, "G006", "G006-N1")).result

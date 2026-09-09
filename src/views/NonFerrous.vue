@@ -355,18 +355,21 @@
       </div>
     </section>
   </div>
+  <LiteratureSection domainCode="non_ferrous" domainName="有色冶金" />
   <Footer></Footer>
 </template>
 
 <script>
 import Header from "@/components/Header.vue";
 import Footer from "@/components/Footer.vue";
+import LiteratureSection from "@/components/LiteratureSection.vue";
 
 export default {
   name: "NonFerrous",
   components: {
     Header,
     Footer,
+    LiteratureSection,
   },
 };
 </script>

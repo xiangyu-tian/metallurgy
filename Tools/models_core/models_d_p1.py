@@ -22,6 +22,38 @@ SCENARIO = "冶金工艺、物料与热平衡"
 PARAMETER_TABLE = "metallurgy_v2.bof_slag_model_parameter"
 ELEMENT_TABLE = "metallurgy_v2.element_reference"
 
+DYNAMIC_NONNEGATIVE_MAP_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0},
+}
+
+MASS_FRACTION_COMPONENT_MAP_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1},
+}
+
+MASS_PERCENT_COMPONENT_MAP_SCHEMA = {
+    "type": "object",
+    "minProperties": 1,
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {"type": "number", "minimum": 0, "maximum": 100},
+}
+
+SLAG_MASS_STREAM_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "mass_kg": {"type": "number", "exclusiveMinimum": 0},
+        "composition": MASS_FRACTION_COMPONENT_MAP_SCHEMA,
+    },
+    "required": ["name", "mass_kg", "composition"],
+    "additionalProperties": False,
+}
+
 
 def _rel(kind: str, target: str, description: str) -> dict[str, str]:
     return {"type": kind, "target": target, "description": description}
@@ -164,12 +196,12 @@ class D005_BOFSlagMassEstimate(_P1DataProcessTool):
         _rel("upstream_of", "D014", "总渣量和铁氧化物组成供TFe与铁损计算"),
     ]
     input_fields = [
-        InputField("oxidized_element_masses_kg", "分元素氧化质量", "object", unit="kg/basis", description="元素符号到氧化质量的映射，例如{Si:10,Mn:2}"),
-        InputField("oxide_product_formulas", "元素氧化物去向", "object", description="元素符号到唯一氧化物化学式的映射，例如{Si:SiO2,Mn:MnO}"),
-        InputField("oxide_capture_fractions", "氧化物入渣捕集率", "object", required=False, description="元素到[0,1]捕集率；省略元素按1"),
-        InputField("flux_streams", "熔剂流股", "array", required=False, items={"type": "object"}, description="[{name,mass_kg,composition:{CaO:0.9,...}}]，组成质量分数和为1"),
-        InputField("refractory_streams", "炉衬侵蚀流股", "array", required=False, items={"type": "object"}, description="格式同flux_streams"),
-        InputField("other_slag_streams", "其他渣源流股", "array", required=False, items={"type": "object"}, description="格式同flux_streams"),
+        InputField("oxidized_element_masses_kg", "分元素氧化质量", "object", unit="kg/basis", description="元素符号到非负氧化质量的非空映射，例如{Si:10,Mn:2}", json_schema=DYNAMIC_NONNEGATIVE_MAP_SCHEMA),
+        InputField("oxide_product_formulas", "元素氧化物去向", "object", description="元素符号到唯一氧化物化学式的非空映射；键必须与氧化质量完全一致", json_schema={"type": "object", "minProperties": 1, "propertyNames": {"type": "string", "minLength": 1}, "additionalProperties": {"type": "string", "minLength": 1}}),
+        InputField("oxide_capture_fractions", "氧化物入渣捕集率", "object", required=False, description="元素到[0,1]捕集率；省略元素按1", json_schema={"type": "object", "propertyNames": {"type": "string", "minLength": 1}, "additionalProperties": {"type": "number", "minimum": 0, "maximum": 1}}),
+        InputField("flux_streams", "熔剂流股", "array", required=False, items=SLAG_MASS_STREAM_SCHEMA, description="[{name,mass_kg,composition:{CaO:0.9,...}}]，组成质量分数和为1"),
+        InputField("refractory_streams", "炉衬侵蚀流股", "array", required=False, items=SLAG_MASS_STREAM_SCHEMA, description="格式同flux_streams"),
+        InputField("other_slag_streams", "其他渣源流股", "array", required=False, items=SLAG_MASS_STREAM_SCHEMA, description="格式同flux_streams"),
         InputField("entrained_metal_mass_kg", "显式金属夹带", "number", required=False, default=0.0, unit="kg/basis", min_value=0),
         InputField("basis", "计算基准", "select", required=False, default="per_heat", enum=["per_heat", "per_t_steel"]),
     ]
@@ -314,7 +346,7 @@ class D006_SlagBasicity(_P1FormulaProcessTool):
         _rel("upstream_of", "D011", "渣组成用于硫容量与分配计算"),
     ]
     input_fields = [
-        InputField("component_masses_kg", "渣组分质量", "object", unit="kg/basis"),
+        InputField("component_masses_kg", "渣组分质量", "object", unit="kg/basis", description="组分名到非负质量的非空映射，且至少一项大于0", json_schema=DYNAMIC_NONNEGATIVE_MAP_SCHEMA),
         InputField("definition", "碱度定义", "select", required=False, default="R2_CaO_SiO2", enum=["R2_CaO_SiO2", "R3_CaO_MgO_SiO2", "R4_CaO_MgO_SiO2_Al2O3", "CUSTOM"]),
         InputField("custom_numerator_components", "自定义分子组分", "array", required=False, items={"type": "string"}),
         InputField("custom_denominator_components", "自定义分母组分", "array", required=False, items={"type": "string"}),
@@ -435,7 +467,7 @@ class D010_PhosphorusPartition(_P1DataProcessTool):
         InputField("parameter_set_id", "参数集ID", "string", required=False, default="D010_SPOONER_ISIJ_2016_V1"),
         InputField("calculation_purpose", "计算用途", "select", enum=["reference_validation", "engineering_screening"]),
         InputField("temperature_k", "温度", "number", unit="K", min_value=1e-12),
-        InputField("slag_composition_mass_percent", "渣成分", "object", unit="mass percent", description="必须含CaO,MgO,P2O5,Al2O3,SiO2"),
+        InputField("slag_composition_mass_percent", "渣成分", "object", unit="mass percent", description="必须含CaO,MgO,P2O5,Al2O3,SiO2，可含其他非负组分；总和不得超过100", json_schema={**MASS_PERCENT_COMPONENT_MAP_SCHEMA, "properties": {component: {"type": "number", "minimum": 0, "maximum": 100} for component in ("CaO", "MgO", "P2O5", "Al2O3", "SiO2")}, "required": ["CaO", "MgO", "P2O5", "Al2O3", "SiO2"]}),
         InputField("tfe_mass_percent", "渣中TFe", "number", unit="mass percent", min_value=1e-12, max_value=100),
         InputField("metal_mass_kg", "金属质量", "number", unit="kg/basis", min_value=1e-12),
         InputField("slag_mass_kg", "渣质量", "number", unit="kg/basis", min_value=1e-12),
@@ -554,7 +586,7 @@ class D011_SulfurPartition(_P1DataProcessTool):
         InputField("parameter_set_id", "参数集ID", "string", required=False, default="D011_ZHANG_MA_ISIJ_V1"),
         InputField("calculation_purpose", "计算用途", "select", enum=["reference_validation", "engineering_screening"]),
         InputField("temperature_k", "温度", "number", unit="K", min_value=1e-12),
-        InputField("slag_component_masses_kg", "渣组分质量", "object", unit="kg/basis", description="仅支持CaO,MgO,Al2O3,SiO2,FeO,MnO,TiO2,CaF2"),
+        InputField("slag_component_masses_kg", "渣组分质量", "object", unit="kg/basis", description="仅支持CaO,MgO,Al2O3,SiO2,FeO,MnO,TiO2,CaF2；至少一项大于0", json_schema={"type": "object", "properties": {component: {"type": "number", "minimum": 0} for component in ("CaO", "MgO", "Al2O3", "SiO2", "FeO", "MnO", "TiO2", "CaF2")}, "minProperties": 1, "additionalProperties": False}),
         InputField("oxygen_activity", "金属中氧活度", "number", unit="dimensionless", min_value=1e-15),
         InputField("sulfur_activity_coefficient", "金属中硫活度系数", "number", unit="dimensionless", min_value=1e-15),
         InputField("metal_mass_kg", "金属质量", "number", unit="kg/basis", min_value=1e-12),
@@ -915,7 +947,7 @@ class D014_TFeIronLoss(_P1DataProcessTool):
     ]
     input_fields = [
         InputField("slag_mass_kg", "总渣量", "number", unit="kg/basis", min_value=1e-12),
-        InputField("iron_species_mass_fractions", "含铁物种质量分数", "object", unit="mass fraction", description="允许FeO,Fe2O3,Fe3O4,Fe，和不得超过1"),
+        InputField("iron_species_mass_fractions", "含铁物种质量分数", "object", unit="mass fraction", description="允许FeO,Fe2O3,Fe3O4,Fe，和不得超过1", json_schema={"type": "object", "properties": {species: {"type": "number", "minimum": 0, "maximum": 1} for species in ("FeO", "Fe2O3", "Fe3O4", "Fe")}, "minProperties": 1, "additionalProperties": False}),
         InputField("steel_tapped_mass_kg", "出钢量", "number", unit="kg/basis", min_value=1e-12),
         InputField("iron_value_per_kg", "铁价值", "number", required=False, default=0.0, unit="currency/kg Fe", min_value=0),
         InputField("currency", "货币代码", "string", required=False, default="CNY"),

@@ -6,7 +6,9 @@ const isLocal = window.location.hostname === 'localhost' ||
     window.location.hostname === '127.0.0.1';
 
 // 本地开发直连后端3000端口，生产环境用相对路径
-const API_BASE_URL = isLocal ? 'http://localhost:3000/api' : '/api';
+const API_BASE_URL = isLocal
+    ? `http://${window.location.hostname}:3000/api`
+    : '/api';
 
 console.log('环境:', isLocal ? '开发' : '生产');
 console.log('API地址:', API_BASE_URL);
